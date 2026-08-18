@@ -3,15 +3,16 @@
 [![GitHub Repo](https://img.shields.io/badge/GitHub-kalivoid2047%2FTIFF__TESTER__PRO__SD-181717?logo=github)](https://github.com/kalivoid2047/TIFF_TESTER_PRO_SD)
 [![CI](https://github.com/kalivoid2047/TIFF_TESTER_PRO_SD/actions/workflows/ci.yml/badge.svg)](https://github.com/kalivoid2047/TIFF_TESTER_PRO_SD/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](Documentation/PROJECT_STATUS.md)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](Documentation/PROJECT_STATUS.md)
 
 Bench-first automotive module tester/diagnostic/service platform, built around
-an ESP32 main controller and an independent Arduino Nano safety controller.
+an ESP32 main controller and an independent Arduino Nano safety controller,
+with a Flutter/Android companion app.
 
-**Status: v0.2.0 (pre-1.0, bench prototype)** — dual-MCU safety architecture,
-CAN/K-Line drivers, BLE service, and module-profile-driven test execution
-are implemented but not yet hardware-validated; the mobile app and
-injector/coil driver hardware don't exist yet. See
+**Status: v0.3.0 (pre-1.0, bench prototype)** — dual-MCU safety architecture,
+CAN/K-Line drivers, BLE service, module-profile-driven test execution, and
+the mobile app are all implemented but not yet validated against real
+hardware end-to-end; injector/coil driver hardware doesn't exist yet. See
 [PROJECT_STATUS.md](Documentation/PROJECT_STATUS.md) for the full picture.
 
 ## Repository layout
@@ -20,6 +21,7 @@ injector/coil driver hardware don't exist yet. See
 TIFF_TESTER_PRO_SD/
 ├── Arduino_Nano_Safety/    Nano safety controller firmware
 ├── ESP32_Firmware/         ESP32 main application firmware
+├── Mobile_App/             Flutter/Android companion app
 ├── SD_MODULES/             Module profiles stored on the SD card
 └── Documentation/          All project documentation (start here)
 ```
@@ -49,13 +51,15 @@ TIFF_TESTER_PRO_SD/
       implemented, actual calibration against real hardware still needed**
 - [x] Relay polarity — now runtime-configurable — **actual confirmation
       against your physical relay module still needed**
-- [x] BLE GATT service on the ESP32 (status/command/result, PIN-gated) for
-      a future mobile app
+- [x] BLE GATT service on the ESP32 (status/command/result, PIN-gated,
+      including in-app PIN changes)
 - [x] Wi-Fi AP password / BLE PIN — configurable via SD-backed config and a
       web API, no longer hard-coded
+- [x] **Flutter/Android mobile app** — all ten UI_UX_SPEC.md screens,
+      BLE-connected, PDF report export; analyzed/tested/built in CI
 
-Not yet done: the Android mobile app and injector/coil driver hardware.
-Full detail, including what still needs physical bench work, is in
+Not yet done: injector/coil driver hardware, and real-device validation of
+the app against real firmware. Full detail is in
 [PROJECT_STATUS.md](Documentation/PROJECT_STATUS.md).
 
 ## Documentation

@@ -114,34 +114,48 @@ decisions).
 
 **Goal:** build the Android app to match the ten reference screens.
 
-- [ ] Project setup (Kotlin recommended; confirm min/target SDK per Phase 0
-      decision).
-- [ ] BLE scan/connect/pair flow (screens 3–4): permissions handling
-      (Android 12+ runtime BLE permissions), device list with RSSI, PIN
-      entry with the failure/backoff states flagged in UI_UX_SPEC §4.4.
-- [ ] Home/Connected dashboard (screens 2/5): connection status, ECU
+**Status: built (Flutter, not Kotlin — see note below), CI-verified, not
+yet run against real hardware.**
+
+- [x] Project setup — built with **Flutter/Dart** instead of the
+      originally-planned Kotlin (faster to get a working cross-widget UI
+      matching the reference screenshots exactly; revisit only if a native
+      Android-specific need arises). Min SDK 26 per Phase 0/SRS
+      NFR-COMPAT-1.
+- [x] BLE scan/connect/pair flow (screens 3–4): runtime BLE/location
+      permissions (Android 12+ model), device list with RSSI, PIN entry.
+      Failure/backoff *display* states not yet built (firmware-side
+      lockout exists; app doesn't yet surface "locked out, retry in Ns").
+- [x] Home/Connected dashboard (screens 2/5): connection status, ECU
       on/off, quick-test tiles, bottom nav shell.
-- [ ] Injector test screen (screens 6/9): channel select, parameter
-      inputs, start/stop, live status polling from BLE notify.
-- [ ] Coil test screen (screen 7): same pattern, coil-specific fields.
-- [ ] All Injectors test screen (screen 8): sequential run + progress.
-- [ ] Results screen (screen 10): session result list, clear, PDF export
-      (library selection per Phase 0).
-- [ ] Splash screen (screen 1) with app init (BLE stack ready check, load
-      any cached device/PIN).
-- [ ] Fill the UI gaps from UI_UX_SPEC §6 (System Info, Settings, Tests
-      tab, module-selection screen, empty/error states) once Phase 0
-      supplies real designs or sign-off to design in-house.
-- [ ] Local persistence for in-session results (survive app backgrounding,
-      per SRS NFR-REL-1).
+- [x] Injector test screen (screens 6/9): channel select, parameter
+      inputs, start/stop, live status. Honestly reports `NOT_IMPLEMENTED`
+      pending Phase 1 hardware rather than faking a result.
+- [x] Coil test screen (screen 7): same pattern, coil-specific fields.
+- [x] All Injectors test screen (screen 8): request + progress display;
+      firmware currently answers as one combined result rather than a true
+      4-step sequence (no driver hardware to actually sequence yet).
+- [x] Results screen (screen 10): session result list, clear (with confirm
+      dialog), PDF export via `pdf`/`printing` packages.
+- [x] Splash screen (screen 1).
+- [x] Filled the UI gaps from UI_UX_SPEC §6: System Info and Settings
+      screens built (first-pass, no reference design existed); Tests tab
+      resolved as a fuller test menu; module-selection screen and
+      empty/error states beyond the basics **still not done** (see below).
+- [ ] Local persistence for in-session results across app restarts (SRS
+      NFR-REL-1) — currently session-only, not yet implemented.
+- [ ] Module-profile selection screen — the app can send `SELECT_MODULE`
+      but has no UI to pick from the SD card's module list yet.
 
-**Exit criteria:** a technician can complete the full flow — scan, pair,
-run one injector test and one coil test, view results, save a PDF — against
-real Phase 2 firmware on real Phase 1 hardware.
+**Exit criteria (not yet met):** a technician can complete the full flow —
+scan, pair, run one injector test and one coil test, view results, save a
+PDF — against real Phase 2 firmware on real Phase 1 hardware. Currently
+true only against Phase 2 firmware (no Phase 1 hardware exists, so
+injector/coil tests report `NOT_IMPLEMENTED` by design) and only verified
+via `flutter analyze`/`flutter test`/`flutter build apk --debug` in CI —
+**nobody has run the app on a phone against a real ESP32 yet.**
 
-**Depends on:** Phase 2 (firmware/protocol must exist to build against;
-can start UI-only work in parallel against a mock BLE service earlier if
-desired).
+**Depends on:** Phase 2 (done — firmware/protocol exists).
 
 ---
 

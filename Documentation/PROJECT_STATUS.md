@@ -1,6 +1,6 @@
 # TIFF_TESTER_PRO_SD — Project Status
 
-_Version: 0.2.0 (pre-1.0, bench prototype) — Last updated: 2026-08-18_
+_Version: 0.3.0 (pre-1.0, bench prototype) — Last updated: 2026-08-18_
 
 ## Overview
 
@@ -22,12 +22,20 @@ TIFF_TESTER_PRO_SD/
 │   ├── config.ino                       SD-backed AP password / BLE PIN config
 │   ├── can_mcp2515.ino                  MCP2515 CAN driver
 │   ├── kline_iso14230.ino               ISO 14230 K-Line driver
-│   ├── ble_service.ino                  BLE GATT service (for a future mobile app)
+│   ├── ble_service.ino                  BLE GATT service, PIN-gated
 │   └── test_orchestrator.ino            Module-profile-driven test execution + reports
+├── Mobile_App/                          Flutter/Android companion app
+│   └── lib/
+│       ├── ble/                         BLE service wrapper (flutter_blue_plus)
+│       ├── models/                      NanoStatus, TestResult
+│       ├── state/                       App-wide connection/results state
+│       ├── screens/                     One file per UI_UX_SPEC.md screen
+│       └── services/                    PDF report generation
 ├── SD_MODULES/
 │   └── MODULES/TOYOTA/HILUX_1KD_TURBO.INI  Example module profile
 ├── .github/
-│   ├── workflows/ci.yml                 Compiles both sketches on every push/PR
+│   ├── workflows/ci.yml                 Compiles both sketches + builds the
+│   │                                     app on every push/PR
 │   ├── dependabot.yml                   Weekly GitHub Actions version updates
 │   ├── ISSUE_TEMPLATE/                  Bug report / safety issue / feature request
 │   └── PULL_REQUEST_TEMPLATE.md
@@ -38,9 +46,10 @@ TIFF_TESTER_PRO_SD/
 Both firmware "sketches" compile via Arduino tooling (ESP32 board package /
 AVR core); CI stages each into a folder matching its main `.ino` filename
 (see `.github/workflows/ci.yml`) since Arduino requires that and this repo
-organizes by controller role instead. The repo is a git repository with
-GitHub Actions CI, MIT license, and standard community-health files (see
-[README.md](../README.md)).
+organizes by controller role instead. The Flutter app is analyzed, tested,
+and built (`flutter build apk --debug`) in the same CI workflow. The repo is
+a git repository with GitHub Actions CI, MIT license, and standard
+community-health files (see [README.md](../README.md)).
 
 ## Architecture
 
@@ -67,8 +76,10 @@ GitHub Actions CI, MIT license, and standard community-health files (see
   module-list/device-info characteristics) matching
   [Documentation/API_PROTOCOL_SPEC.md](API_PROTOCOL_SPEC.md), gated by an
   app-layer PIN check (not yet BLE link-encrypted — see that doc's §3).
-  This is firmware-side plumbing only; no mobile app exists in this repo
-  (see [Documentation/ROADMAP.md](ROADMAP.md) Phase 3).
+  Also handles `RUN_INJECTOR_TEST`/`RUN_COIL_TEST`/`RUN_ALL_INJECTORS`
+  (honestly reporting `NOT_IMPLEMENTED` — no driver hardware exists yet)
+  and `SET_PIN` for in-app PIN changes. Now has a real client: the Flutter
+  app in `Mobile_App/`.
 - **Test orchestration (`test_orchestrator.ino`)**: parses a selected module
   profile's `[TESTS]`/`[SERVICE]` sections and runs what's actually
   measurable with the sensors this bench has today:
@@ -104,6 +115,32 @@ GitHub Actions CI, MIT license, and standard community-health files (see
   procedure against real hardware yet** — the mechanism exists, the actual
   bench measurement is still a physical step you need to do (see
   `Documentation/PINOUT_AND_WIRING.txt`).
+
+### Mobile app (`Mobile_App/`, Flutter/Android)
+- Implements all ten reference screens from
+  [UI_UX_SPEC.md](UI_UX_SPEC.md): splash, home/dashboard, scan, PIN
+  connect, injector test, coil test, all-injectors test, results (with PDF
+  export), plus the two screens the spec flagged as undesigned gaps
+  (System Info, Settings) and a resolution for the "Tests" tab gap (a
+  fuller test menu combining the channel tests with the sensor-based
+  quick tests).
+- BLE via `flutter_blue_plus`: scan, connect, PIN auth, live status
+  notifications (~250ms cadence from firmware), command writes, result
+  notifications — speaks the exact text-command protocol
+  `ble_service.ino` implements (documented in
+  [API_PROTOCOL_SPEC.md](API_PROTOCOL_SPEC.md) §1.3).
+- Injector/Coil/All-Injectors test screens work end-to-end against real
+  firmware today — they just honestly display `NOT_IMPLEMENTED` as the
+  result, since the driver hardware doesn't exist. No app changes will be
+  needed when Roadmap Phase 1 hardware lands; only the firmware's answer
+  changes.
+- PDF report export via `pdf`/`printing` packages, matching
+  [SRS.md](SRS.md) §6.3.
+- Verified: `flutter analyze` (0 issues), `flutter test` (passing),
+  `flutter build apk --debug` (succeeds) — all three run in CI.
+- Not yet done: real device testing against physical firmware (only
+  verified to compile/run in isolation), iOS (out of scope per PRD), and
+  persisting results across app restarts (session-only for now).
 
 ### Module profile format (`SD_MODULES/MODULES/TOYOTA/HILUX_1KD_TURBO.INI`)
 Unchanged schema. `[TESTS]` and `[SERVICE]` sections are now actually
@@ -152,21 +189,26 @@ consumed by the ESP32 firmware (see above), not just stored as text.
       implemented, actual calibration against real hardware still needed**
 - [x] Relay polarity — now runtime-configurable — **actual confirmation
       against your physical relay module still needed**
-- [x] BLE GATT service on the ESP32 (status/command/result, PIN-gated) for
-      a future mobile app
+- [x] BLE GATT service on the ESP32 (status/command/result, PIN-gated),
+      including `SET_PIN` and `RUN_INJECTOR_TEST`/`RUN_COIL_TEST`/
+      `RUN_ALL_INJECTORS`
 - [x] Wi-Fi AP password / BLE PIN — configurable via SD-backed config and a
       web API, no longer hard-coded (still ship with the same default
       values as before, which you should change)
+- [x] **Android mobile app (Flutter)** — all ten UI_UX_SPEC.md screens
+      implemented, BLE-connected, PDF report export; `flutter analyze`/
+      `flutter test`/`flutter build apk --debug` all pass in CI. Injector/
+      coil test screens are real end-to-end but honestly report
+      `NOT_IMPLEMENTED` pending Roadmap Phase 1 hardware; not yet tested
+      against a physical device or real ESP32 over the air.
 
 ## What's still not implemented / needs physical hardware work
 
 - [ ] **Injector/coil driver hardware** — doesn't exist yet; `position_sweep`
-      and `actuator_movement` tests, and the entire mobile-app injector/coil
-      test flow from the UI spec, depend on this. See
-      [Roadmap.md](ROADMAP.md) Phase 1.
-- [ ] **Android mobile app** — not built (explicitly deferred; see
-      [Roadmap.md](ROADMAP.md) Phase 3). The BLE service above exists for
-      it to connect to once it's built.
+      and `actuator_movement` tests, and the mobile app's injector/coil test
+      screens, depend on this. See [Roadmap.md](ROADMAP.md) Phase 1.
+- [ ] **Real device testing of the mobile app** — built and unit-verified,
+      but nobody has run it on an actual phone against actual firmware yet.
 - [ ] **Real ADC calibration values** — the CAL_* commands exist; nobody has
       run them against a trusted reference meter on real hardware.
 - [ ] **Real relay polarity confirmation** — `SET_RELAY_POLARITY` exists;
@@ -212,5 +254,6 @@ way.
 5. Start on the injector/coil driver hardware (Roadmap Phase 1) — this
    unblocks the two `NOT_IMPLEMENTED` test types and the mobile app's core
    test screens.
-6. Build the mobile app (Roadmap Phase 3) against the BLE service now that
-   it exists.
+6. Install the app on a real Android phone and pair it with a real ESP32
+   running this firmware — confirm the scan/connect/PIN/status/test flow
+   actually works over the air, not just in isolation.

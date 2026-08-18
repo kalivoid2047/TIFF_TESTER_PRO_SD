@@ -1,11 +1,12 @@
 # TIFF_TESTER_PRO_SD
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-kalivoid2047%2FTIFF__TESTER__PRO__SD-181717?logo=github)](https://github.com/kalivoid2047/TIFF_TESTER_PRO_SD)
-[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](PROJECT_STATUS.md)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](PROJECT_STATUS.md)
 
-Bench-first automotive module tester/diagnostic/service platform.
+Bench-first automotive module tester/diagnostic/service platform, with a
+Flutter/Android companion app.
 
-**Status: v0.2.0 (pre-1.0, bench prototype)** — see
+**Status: v0.3.0 (pre-1.0, bench prototype)** — see
 [PROJECT_STATUS.md](PROJECT_STATUS.md) for the full implemented/remaining
 breakdown.
 
@@ -16,9 +17,19 @@ breakdown.
 - Wi-Fi AP / web interface
 - SD module database (`/MODULES`, `/REPORTS`, `/LOGS`, `/CONFIG.INI`)
 - Module upload/validation
-- BLE GATT service (PIN-gated) for a future Android mobile app
+- BLE GATT service (PIN-gated), with a real client: the Flutter app in
+  `Mobile_App/`
 - CAN (MCP2515) and K-Line (ISO 14230) drivers
 - Module-profile-driven test execution and report generation
+
+### Mobile app (`Mobile_App/`, Flutter/Android)
+- All ten screens from [UI_UX_SPEC.md](UI_UX_SPEC.md): splash, home,
+  scan, PIN connect, injector/coil/all-injectors tests, results, plus
+  System Info and Settings
+- Connects over BLE, drives ECU power and test commands, exports PDF
+  reports
+- Injector/coil test screens work end-to-end but honestly report
+  `NOT_IMPLEMENTED` until driver hardware exists (Roadmap Phase 1)
 
 ### Arduino Nano
 - Independent safety controller
@@ -83,13 +94,15 @@ The web page includes module-profile paste/upload and basic safety status.
       implemented, actual calibration against real hardware still needed**
 - [x] Relay polarity — now runtime-configurable — **actual confirmation
       against your physical relay module still needed**
-- [x] BLE GATT service on the ESP32 (status/command/result, PIN-gated) for
-      a future mobile app
+- [x] BLE GATT service on the ESP32 (status/command/result, PIN-gated,
+      including in-app PIN changes)
 - [x] Wi-Fi AP password / BLE PIN — configurable via SD-backed config and a
       web API, no longer hard-coded
+- [x] **Flutter/Android mobile app** — all ten UI_UX_SPEC.md screens,
+      BLE-connected, PDF report export; analyzed/tested/built in CI
 
-Not yet done: the Android mobile app and injector/coil driver hardware.
-Full detail, including what still needs physical bench work, is in
+Not yet done: injector/coil driver hardware, and real-device validation of
+the app against real firmware. Full detail is in
 [PROJECT_STATUS.md](PROJECT_STATUS.md).
 
 ## Important

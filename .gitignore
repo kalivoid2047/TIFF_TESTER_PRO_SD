@@ -4,7 +4,7 @@ build/
 *.hex
 *.elf
 
-# Android (future Mobile_App/)
+# Android/Flutter (Mobile_App/ has its own more specific .gitignore too)
 *.iml
 .gradle/
 local.properties

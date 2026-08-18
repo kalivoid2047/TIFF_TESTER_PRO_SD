@@ -59,3 +59,21 @@ jobs:
             - name: arduino:avr
           sketch-paths: |
             - /tmp/sketches/TIFF_TESTER_PRO_SD_NANO
+
+  analyze-and-build-app:
+    name: Analyze and build TIFF TESTER PRO app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Mobile_App
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+      - run: flutter build apk --debug

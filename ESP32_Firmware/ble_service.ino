@@ -64,6 +64,22 @@ class BleCommandCallbacks : public BLECharacteristicCallbacks {
       return;
     }
 
+    // SET_PIN:<new_pin> — already authenticated with the *current* PIN to
+    // reach this point, so no separate current-PIN check is needed here
+    // (unlike the web API's /api/config/pin, which isn't gated by a prior
+    // auth step and so checks it explicitly). Mirrors
+    // Documentation/SRS.md FR-CONN-4 / NFR-SEC-2.
+    if (cmd.startsWith("SET_PIN:")) {
+      String next = cmd.substring(String("SET_PIN:").length());
+      next.trim();
+      if (next.length() >= 6) {
+        sysConfig.blePin = next;
+        saveSystemConfig();
+        logLine("/LOGS/system.log", "BLE PIN changed via BLE SET_PIN command.");
+      }
+      return;
+    }
+
     if (cmd.startsWith("RUN_TEST:")) {
       String test = cmd.substring(String("RUN_TEST:").length());
       TestResult r;
@@ -72,17 +88,59 @@ class BleCommandCallbacks : public BLECharacteristicCallbacks {
       else if (test == "current_monitor") r = runCurrentMonitorTest();
       else return;
 
-      appendResultToReport(r);
-
-      if (bleResultChar) {
-        String out = r.testType + "," + (r.pass ? "PASS" : "FAIL") + "," + r.response;
-        bleResultChar->setValue(out.c_str());
-        bleResultChar->notify();
-      }
+      notifyResult(r);
       return;
     }
+
+    // RUN_INJECTOR_TEST:<channel>,<pulse_width_ms>,<duration_s>
+    // RUN_COIL_TEST:<channel>,<dwell_ms>,<duration_s>
+    // RUN_ALL_INJECTORS:<pulse_width_ms>,<duration_per_s>
+    //
+    // These match the mobile app's Injector/Coil/All-Injectors test
+    // screens (Documentation/UI_UX_SPEC.md §4.6-4.8), but there is no
+    // injector/coil driver hardware on this board yet (Documentation/
+    // ROADMAP.md Phase 1) — so, honestly, they report NOT_IMPLEMENTED
+    // instead of either faking a pass or leaving the app waiting forever
+    // for a result that will never arrive.
+    if (cmd.startsWith("RUN_INJECTOR_TEST:")) {
+      String params = cmd.substring(String("RUN_INJECTOR_TEST:").length());
+      TestResult r = runUnavailableHardwareTest("injector");
+      r.response = "channel_params=" + params + " - " + r.response;
+      notifyResult(r);
+      return;
+    }
+
+    if (cmd.startsWith("RUN_COIL_TEST:")) {
+      String params = cmd.substring(String("RUN_COIL_TEST:").length());
+      TestResult r = runUnavailableHardwareTest("coil");
+      r.response = "channel_params=" + params + " - " + r.response;
+      notifyResult(r);
+      return;
+    }
+
+    if (cmd.startsWith("RUN_ALL_INJECTORS:")) {
+      String params = cmd.substring(String("RUN_ALL_INJECTORS:").length());
+      TestResult r = runUnavailableHardwareTest("all_injectors");
+      r.response = "params=" + params + " - " + r.response;
+      notifyResult(r);
+      return;
+    }
+
+    // STOP_TEST: every test above runs and completes synchronously (single
+    // sensor read, or an immediate NOT_IMPLEMENTED) rather than a
+    // long-running pulse train, so there is nothing in-flight to actually
+    // interrupt yet. Accepted as a no-op now so the app's Stop button has
+    // something valid to send; revisit once real pulsed tests exist.
   }
 };
+
+void notifyResult(const TestResult &r) {
+  appendResultToReport(r);
+  if (!bleResultChar) return;
+  String out = r.testType + "," + (r.pass ? "PASS" : "FAIL") + "," + r.response;
+  bleResultChar->setValue(out.c_str());
+  bleResultChar->notify();
+}
 
 void bleInit() {
   BLEDevice::init("TiffTester");

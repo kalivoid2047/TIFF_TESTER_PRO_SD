@@ -1,13 +1,17 @@
 # API & Protocol Specification
 ## TIFF TESTER PRO — BLE, Wi-Fi/REST, and UART contracts
 
-_Version: 0.1 (Draft) — 2026-08-18_
+_Version: 0.2 (BLE service + app implemented) — 2026-08-18_
 _Parent document: [PRD.md](PRD.md) · Requirements: [SRS.md](SRS.md) ·
 Architecture: [ARCHITECTURE.md](ARCHITECTURE.md)_
 
-This document is the proposed contract for the three link layers in the
-system. It is a design proposal, not yet implemented — none of the UUIDs,
-opcodes, or message formats below exist in the current firmware.
+This document was originally a proposed contract; §1 now reflects what is
+actually implemented in `ESP32_Firmware/ble_service.ino` and
+`Mobile_App/`. The UUIDs are real and in use. The Command characteristic
+ended up as plain colon/comma-delimited text rather than JSON (§1.3) —
+simpler to parse on both an Arduino `String` and Dart, and small enough
+that MTU was never a concern. The Wi-Fi/REST (§2) and UART (§4) sections
+were also implemented essentially as originally proposed.
 
 ---
 
@@ -32,26 +36,55 @@ opcodes, or message formats below exist in the current firmware.
 | Module List | `...0006` | Read | List of module IDs available on SD (for FR-MOD-2). |
 | Device Info | `...0007` | Read | Firmware versions (ESP32 + Nano), unit serial/ID. |
 
-### 1.3 Command message format (Command characteristic)
+### 1.3 Command message format (Command characteristic) — as implemented
 
-Proposed as compact JSON (BLE MTU permitting after negotiation; fall back to
-a fixed binary struct if payloads exceed a safe MTU budget — decide during
-Phase 2 implementation):
+Plain text, written to the Command characteristic as a UTF-8 string (no
+JSON). This is what `ble_service.ino`'s `BleCommandCallbacks` and the
+Flutter app's `TiffBleService.sendCommand()` actually speak:
 
-```json
-{ "cmd": "POWER_ON" }
-{ "cmd": "POWER_OFF" }
-{ "cmd": "RESET_FAULT" }
-{ "cmd": "SELECT_MODULE", "module_id": "TOYOTA_HILUX_1KD_TURBO" }
-{ "cmd": "RUN_INJECTOR_TEST", "channel": 1, "pulse_width_ms": 3.0, "duration_s": 5 }
-{ "cmd": "RUN_COIL_TEST", "channel": 1, "dwell_ms": 3.0, "duration_s": 5 }
-{ "cmd": "RUN_ALL_INJECTORS", "pulse_width_ms": 3.0, "duration_per_s": 3 }
-{ "cmd": "STOP_TEST" }
+```
+POWER_ON
+POWER_OFF
+RESET_FAULT
+SELECT_MODULE:TOYOTA_HILUX_1KD_TURBO
+RUN_TEST:resistance
+RUN_TEST:short_to_ground
+RUN_TEST:current_monitor
+RUN_INJECTOR_TEST:<channel>,<pulse_width_ms>,<duration_s>
+RUN_COIL_TEST:<channel>,<dwell_ms>,<duration_s>
+RUN_ALL_INJECTORS:<pulse_width_ms>,<duration_per_s>
+STOP_TEST
+SET_PIN:<new_pin>
 ```
 
-Every command (except `POWER_OFF`/`STOP_TEST`, which should always be
-accepted as a safety-favorable action) is rejected by the ESP32 if the
-connection has not completed §3's authentication step.
+`SET_PIN` relies on the connection already being authenticated with the
+*current* PIN (per §3) to reach the command handler at all, so it does not
+separately re-check a "current PIN" the way the Wi-Fi `/api/config/pin`
+endpoint does (that endpoint has no prior auth step to lean on). New PIN
+must be at least 6 characters, same rule as the web API.
+
+Every command (except `POWER_OFF`/`STOP_TEST`, which are always accepted
+as safety-favorable) is silently ignored by the ESP32 if the connection
+has not completed §3's PIN authentication.
+
+**Important — hardware-honesty note:** `RUN_INJECTOR_TEST`,
+`RUN_COIL_TEST`, and `RUN_ALL_INJECTORS` are accepted and always answered
+on the Result characteristic, but currently always return
+`NOT_IMPLEMENTED` — there is no injector/coil driver hardware on the
+board yet (see [ROADMAP.md](ROADMAP.md) Phase 1). Only `RUN_TEST:resistance`
+/ `short_to_ground` / `current_monitor` produce a real PASS/FAIL today,
+computed from the Nano's existing voltage/current sensors. The app's
+Injector/Coil/All-Injectors test screens work end-to-end today, they just
+honestly report "not implemented" instead of either hanging or faking a
+result — swapping in real pulse-driven tests later requires only a
+firmware change, not an app change, since the command/result contract is
+already what the app speaks.
+
+`STOP_TEST` is currently a no-op on the firmware side: every test above
+runs and completes synchronously (one sensor read, or an immediate
+`NOT_IMPLEMENTED`), so there's nothing in-flight to interrupt yet. It's
+accepted now so the app's Stop button has something valid to send once
+real, longer-running pulse tests exist.
 
 ### 1.4 Status notify format
 Reuses the existing `STATUS,relay,fault,estop,watchdog,supply,dut,current,
