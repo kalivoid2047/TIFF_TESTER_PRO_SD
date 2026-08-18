@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest new functionality or an improvement
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, check whether this is already planned in
+        [Documentation/ROADMAP.md](../../Documentation/ROADMAP.md) or
+        described in [Documentation/PRD.md](../../Documentation/PRD.md) /
+        [Documentation/SRS.md](../../Documentation/SRS.md) — if so, link it
+        below instead of duplicating.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+
+  - type: input
+    id: related-docs
+    attributes:
+      label: Related roadmap/PRD/SRS section (if any)
+    validations:
+      required: false

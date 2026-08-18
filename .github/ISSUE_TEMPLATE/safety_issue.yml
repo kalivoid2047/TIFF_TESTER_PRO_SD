@@ -1,0 +1,66 @@
+name: "⚠️ Safety issue"
+description: A fault condition fails to cut DUT power, or another safety-critical defect
+labels:
+  - safety
+  - bug
+  - priority:high
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for anything where the **independent safety
+        supervision** (Nano) does not behave as documented — e.g. a fault
+        condition (e-stop, over/under-voltage, over-current, heartbeat
+        loss, watchdog) fails to cut DUT power, or cuts it later than
+        expected. See `Documentation/ARCHITECTURE.md` §3 for the safety
+        boundary this system is meant to guarantee.
+
+  - type: textarea
+    id: condition
+    attributes:
+      label: Fault condition involved
+      description: e-stop / undervoltage / overvoltage / DUT overvoltage / overcurrent / heartbeat loss / watchdog reset / other
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected safety behavior
+      description: What should have happened (per the documented fail-safe principle)?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened? Include timing if known (how long power stayed live).
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: input
+    id: firmware-version
+    attributes:
+      label: Nano / ESP32 firmware version or commit
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Hardware setup / additional context
+      description: Bench wiring, module profile in use, anything else relevant.
+    validations:
+      required: false

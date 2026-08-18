@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/kalivoid2047/TIFF_TESTER_PRO_SD/tree/master/Documentation
+    about: Check the PRD, SRS, Architecture, and Roadmap docs before filing an issue.
