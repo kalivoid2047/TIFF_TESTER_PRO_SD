@@ -41,6 +41,11 @@ current-sensor calibration, CAN transceiver wiring, K-Line wiring, and OEM
 diagnostic/service procedures must be validated on the actual
 hardware/module before connecting expensive automotive ECUs or actuators.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) — please read the safety-critical
+code section before touching `Arduino_Nano_Safety/`.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
