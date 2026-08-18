@@ -183,6 +183,20 @@ consumed by the ESP32 firmware (see above), not just stored as text.
 - [ ] Hardware-in-the-loop automated testing (CI only compile-checks the
       firmware; it can't exercise real Nano/ESP32/sensor behavior).
 
+## Confirmed resource-pressure finding
+
+Combining Wi-Fi AP + WebServer + SD + BLE + CAN + K-Line on the ESP32
+**does exceed the default partition scheme's app space** — this is the
+exact risk flagged in [ARCHITECTURE.md](ARCHITECTURE.md) §6, and it's now
+confirmed (CI failed with "text section exceeds available space in board"
+until fixed). Resolved by switching to the `huge_app` partition scheme
+(trades away OTA space, which this bench tool doesn't use, for a larger
+app partition) — see `.github/workflows/ci.yml` and the board-setting note
+at the top of `TIFF_TESTER_PRO_SD_ESP32.ino`. If you're flashing via the
+Arduino IDE rather than CI, you must set this manually
+(Tools > Partition Scheme > "Huge APP") or the build will fail the same
+way.
+
 ## Suggested next steps
 
 1. Physically calibrate the Nano's ADC scaling using the new `CAL_*`

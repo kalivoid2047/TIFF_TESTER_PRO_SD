@@ -14,6 +14,15 @@
     must be validated per module before use. Do not send arbitrary UDS
     routines to a vehicle/module.
 
+  BOARD SETTING REQUIRED:
+    Wi-Fi + WebServer + SD + BLE + CAN + K-Line together exceed the ESP32's
+    default partition scheme's app space. In the Arduino IDE, set
+    Tools > Partition Scheme to "Huge APP (3MB No OTA/1MB SPIFFS)" (or
+    equivalent) before compiling/uploading, or this will fail to build
+    with "text section exceeds available space in board". CI builds this
+    with fqbn esp32:esp32:esp32:PartitionScheme=huge_app — see
+    .github/workflows/ci.yml.
+
   This sketch is organized as several tab files, all part of the same
   build (see shared_types.h for why struct types live in a real header
   rather than in a .ino tab):
