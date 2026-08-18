@@ -1,0 +1,30 @@
+# Suggested inter-controller wiring
+
+ESP32 GPIO16 (RX2)  <- Nano TX (D1)
+ESP32 GPIO17 (TX2)  -> Nano RX (D0)
+GND                 --- GND
+
+ESP32:
+SD_CS = GPIO5
+CAN_CS = GPIO15
+CAN_INT = GPIO4
+Nano UART = GPIO16/17
+DUT voltage ADC = GPIO34
+DUT current ADC = GPIO35
+Supply voltage ADC = GPIO32
+
+Nano:
+D4  = DUT relay driver
+D3  = Emergency stop input (INPUT_PULLUP)
+D6  = Buzzer
+D13 = Status LED
+A0  = DUT voltage
+A1  = Supply voltage
+A2  = Current sensor
+A3  = Temperature / spare
+
+NOTE:
+The relay module's electrical logic must match the firmware. If using an
+active-low relay module, invert the relay output logic in the Nano code.
+Do not connect automotive 12 V signals directly to ESP32/Nano GPIO pins.
+Use suitable dividers, protection and/or isolation.

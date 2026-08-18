@@ -1,0 +1,20 @@
+# Arduino / PlatformIO build artifacts
+build/
+.pio/
+*.hex
+*.elf
+
+# Android (future Mobile_App/)
+*.iml
+.gradle/
+local.properties
+.idea/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# OS/editor cruft
+.DS_Store
+Thumbs.db
+*.swp
