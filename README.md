@@ -3,9 +3,16 @@
 [![GitHub Repo](https://img.shields.io/badge/GitHub-kalivoid2047%2FTIFF__TESTER__PRO__SD-181717?logo=github)](https://github.com/kalivoid2047/TIFF_TESTER_PRO_SD)
 [![CI](https://github.com/kalivoid2047/TIFF_TESTER_PRO_SD/actions/workflows/ci.yml/badge.svg)](https://github.com/kalivoid2047/TIFF_TESTER_PRO_SD/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](Documentation/PROJECT_STATUS.md)
 
 Bench-first automotive module tester/diagnostic/service platform, built around
 an ESP32 main controller and an independent Arduino Nano safety controller.
+
+**Status: v0.2.0 (pre-1.0, bench prototype)** — dual-MCU safety architecture,
+CAN/K-Line drivers, BLE service, and module-profile-driven test execution
+are implemented but not yet hardware-validated; the mobile app and
+injector/coil driver hardware don't exist yet. See
+[PROJECT_STATUS.md](Documentation/PROJECT_STATUS.md) for the full picture.
 
 ## Repository layout
 

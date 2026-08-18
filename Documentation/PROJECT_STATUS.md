@@ -1,6 +1,6 @@
 # TIFF_TESTER_PRO_SD — Project Status
 
-_Last updated: 2026-08-18_
+_Version: 0.2.0 (pre-1.0, bench prototype) — Last updated: 2026-08-18_
 
 ## Overview
 

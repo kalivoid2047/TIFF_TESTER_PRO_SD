@@ -1,8 +1,13 @@
 # TIFF_TESTER_PRO_SD
 
 [![GitHub Repo](https://img.shields.io/badge/GitHub-kalivoid2047%2FTIFF__TESTER__PRO__SD-181717?logo=github)](https://github.com/kalivoid2047/TIFF_TESTER_PRO_SD)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](PROJECT_STATUS.md)
 
 Bench-first automotive module tester/diagnostic/service platform.
+
+**Status: v0.2.0 (pre-1.0, bench prototype)** — see
+[PROJECT_STATUS.md](PROJECT_STATUS.md) for the full implemented/remaining
+breakdown.
 
 ## Controller roles
 
