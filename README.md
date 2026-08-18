@@ -40,3 +40,7 @@ diagnostic implementation. Exact connector pinouts, voltage-divider ratios,
 current-sensor calibration, CAN transceiver wiring, K-Line wiring, and OEM
 diagnostic/service procedures must be validated on the actual
 hardware/module before connecting expensive automotive ECUs or actuators.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
