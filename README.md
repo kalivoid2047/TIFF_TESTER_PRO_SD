@@ -44,7 +44,8 @@ hardware/module before connecting expensive automotive ECUs or actuators.
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) — please read the safety-critical
-code section before touching `Arduino_Nano_Safety/`.
+code section before touching `Arduino_Nano_Safety/`. Participation in this
+project is governed by the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
