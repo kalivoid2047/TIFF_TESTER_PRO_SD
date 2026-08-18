@@ -14,6 +14,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Arduino tooling requires a sketch's folder name to match its .ino
+      # filename exactly. This repo organizes firmware by controller role
+      # (ESP32_Firmware/, Arduino_Nano_Safety/) instead, so stage a
+      # correctly-named copy for compilation rather than restructuring the
+      # repo.
+      - name: Stage sketch for compilation
+        run: |
+          mkdir -p /tmp/sketches/TIFF_TESTER_PRO_SD_ESP32
+          cp ESP32_Firmware/TIFF_TESTER_PRO_SD_ESP32.ino /tmp/sketches/TIFF_TESTER_PRO_SD_ESP32/
+
       - name: Compile TIFF_TESTER_PRO_SD_ESP32.ino
         uses: arduino/compile-sketches@v1
         with:
@@ -22,13 +32,18 @@ jobs:
             - name: esp32:esp32
               source-url: https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
           sketch-paths: |
-            - ESP32_Firmware
+            - /tmp/sketches/TIFF_TESTER_PRO_SD_ESP32
 
   compile-nano:
     name: Compile Nano safety firmware
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Stage sketch for compilation
+        run: |
+          mkdir -p /tmp/sketches/TIFF_TESTER_PRO_SD_NANO
+          cp Arduino_Nano_Safety/TIFF_TESTER_PRO_SD_NANO.ino /tmp/sketches/TIFF_TESTER_PRO_SD_NANO/
 
       - name: Compile TIFF_TESTER_PRO_SD_NANO.ino
         uses: arduino/compile-sketches@v1
@@ -37,4 +52,4 @@ jobs:
           platforms: |
             - name: arduino:avr
           sketch-paths: |
-            - Arduino_Nano_Safety
+            - /tmp/sketches/TIFF_TESTER_PRO_SD_NANO
