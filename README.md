@@ -17,6 +17,40 @@ TIFF_TESTER_PRO_SD/
 └── Documentation/          All project documentation (start here)
 ```
 
+## What's implemented
+
+- [x] Dual-MCU fail-safe architecture with independent Nano supervision
+- [x] Heartbeat-based dead-man's switch (ESP32 → Nano)
+- [x] Emergency stop, over/under-voltage, over-current cutoffs
+- [x] Nano hardware watchdog
+- [x] ESP32 Wi-Fi AP + minimal web UI
+- [x] SD-based module storage with basic upload validation
+- [x] One example module profile establishing the `.INI` schema
+- [x] Git repository, GitHub remote, CI (compiles both sketches), Dependabot,
+      MIT license, CONTRIBUTING/CODE_OF_CONDUCT, issue/PR templates
+- [x] Full documentation set: PRD, SRS, Architecture, UI/UX spec,
+      API/protocol spec, Roadmap
+- [x] CAN driver (MCP2515) — implemented, **not hardware-validated**
+- [x] K-Line driver (ISO 14230 fast-init) — implemented, **not
+      hardware-validated**
+- [x] `[TESTS]`/`[SERVICE]` module-profile sections consumed by firmware —
+      real tests run where existing sensors make that meaningful;
+      hardware-dependent tests and all `[SERVICE]` routines correctly
+      report `NOT_IMPLEMENTED` rather than being faked
+- [x] Test report generation to `/REPORTS` and `/LOGS`
+- [x] ADC calibration mechanism (UART commands + EEPROM) — **mechanism
+      implemented, actual calibration against real hardware still needed**
+- [x] Relay polarity — now runtime-configurable — **actual confirmation
+      against your physical relay module still needed**
+- [x] BLE GATT service on the ESP32 (status/command/result, PIN-gated) for
+      a future mobile app
+- [x] Wi-Fi AP password / BLE PIN — configurable via SD-backed config and a
+      web API, no longer hard-coded
+
+Not yet done: the Android mobile app and injector/coil driver hardware.
+Full detail, including what still needs physical bench work, is in
+[PROJECT_STATUS.md](Documentation/PROJECT_STATUS.md).
+
 ## Documentation
 
 Full project documentation lives in [`Documentation/`](Documentation/):
