@@ -13,6 +13,16 @@
     This is a framework/base controller. OEM diagnostic/service procedures
     must be validated per module before use. Do not send arbitrary UDS
     routines to a vehicle/module.
+
+  This sketch is organized as several tab files, all part of the same
+  build (see shared_types.h for why struct types live in a real header
+  rather than in a .ino tab):
+    TIFF_TESTER_PRO_SD_ESP32.ino  - setup/loop, safety UART, web dashboard
+    config.ino                    - SD-backed AP password / BLE PIN config
+    can_mcp2515.ino                - MCP2515 CAN driver
+    kline_iso14230.ino             - ISO 14230 K-Line driver
+    ble_service.ino                - BLE GATT service for a future mobile app
+    test_orchestrator.ino          - module-profile-driven test execution + reports
 */
 
 #include <Arduino.h>
@@ -20,6 +30,12 @@
 #include <SD.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
+
+#include "shared_types.h"
 
 // ---------- Pins ----------
 #define SD_CS           5
@@ -29,6 +45,9 @@
 #define NANO_RX        16
 #define NANO_TX        17
 
+#define KLINE_RX       25
+#define KLINE_TX       26
+
 #define DUT_VOLT_PIN   34
 #define DUT_CURR_PIN   35
 #define SUPPLY_VOLT_PIN 32
@@ -36,7 +55,43 @@
 #define STATUS_LED      2
 
 HardwareSerial NanoSerial(2);
+HardwareSerial KlineSerial(1);
 WebServer server(80);
+
+// ---------- BLE ----------
+// Vendor UUIDs minted for this project. If you ship another product with
+// its own BLE service on the same base, generate fresh UUIDs rather than
+// reusing these.
+#define BLE_SERVICE_UUID       "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
+#define BLE_CHAR_AUTH_UUID     "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
+#define BLE_CHAR_STATUS_UUID   "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
+#define BLE_CHAR_COMMAND_UUID  "6e400004-b5a3-f393-e0a9-e50e24dcca9e"
+#define BLE_CHAR_RESULT_UUID   "6e400005-b5a3-f393-e0a9-e50e24dcca9e"
+#define BLE_CHAR_MODULES_UUID  "6e400006-b5a3-f393-e0a9-e50e24dcca9e"
+#define BLE_CHAR_DEVINFO_UUID  "6e400007-b5a3-f393-e0a9-e50e24dcca9e"
+
+BLEServer *bleServer = nullptr;
+BLECharacteristic *bleAuthChar = nullptr;
+BLECharacteristic *bleStatusChar = nullptr;
+BLECharacteristic *bleCommandChar = nullptr;
+BLECharacteristic *bleResultChar = nullptr;
+BLECharacteristic *bleModulesChar = nullptr;
+BLECharacteristic *bleDevInfoChar = nullptr;
+bool bleClientConnected = false;
+bool bleAuthenticated = false;
+uint8_t blePinFailCount = 0;
+uint32_t blePinLockoutUntil = 0;
+
+// ---------- System config (SD-backed, see config.ino) ----------
+SystemConfig sysConfig;
+
+// ---------- Active module profile (see test_orchestrator.ino) ----------
+ModuleProfile activeModule;
+
+// [SERVICE] routines are read and reported (see test_orchestrator.ino) but
+// never executed by this firmware build — see Documentation/SRS.md and the
+// header comment on runServiceRoutine().
+#define SERVICE_ROUTINES_ENABLED false
 
 // ---------- Safety ----------
 const uint32_t HEARTBEAT_MS = 250;
@@ -44,16 +99,7 @@ const uint32_t STATUS_POLL_MS = 500;
 uint32_t lastHeartbeat = 0;
 uint32_t lastStatusPoll = 0;
 
-struct NanoStatus {
-  bool relay = false;
-  bool fault = false;
-  bool estop = false;
-  bool watchdog = false;
-  float supplyV = 0;
-  float dutV = 0;
-  float currentA = 0;
-  String faultText = "";
-} nano;
+NanoStatus nano;
 
 String serialLine;
 
@@ -67,17 +113,10 @@ void parseNanoLine(String s) {
 
   // STATUS,relay,fault,estop,watchdog,supply,dut,current,faulttext
   if (s.startsWith("STATUS,")) {
-    int p[9];
-    int idx = 0;
-    for (int i=0; i<9; i++) p[i] = -1;
-    for (int i=0; i<(int)s.length() && idx<9; i++) {
-      if (s[i] == ',') p[++idx] = i;
-    }
-    // Simpler CSV extraction
     String a[9];
     int start = 0, n = 0;
-    for (int i=0; i<=s.length() && n<9; i++) {
-      if (i == s.length() || s[i] == ',') {
+    for (int i = 0; i <= (int)s.length() && n < 9; i++) {
+      if (i == (int)s.length() || s[i] == ',') {
         a[n++] = s.substring(start, i);
         start = i + 1;
       }
@@ -92,6 +131,14 @@ void parseNanoLine(String s) {
       nano.currentA = a[7].toFloat();
       if (n >= 9) nano.faultText = a[8];
     }
+    return;
+  }
+
+  // CONFIG,supplyDiv,dutDiv,curZero,curScale,relayActiveLow,calibrated
+  // (currently just logged; exposed via GET /api/nano/config on demand)
+  if (s.startsWith("CONFIG,")) {
+    logLine("/LOGS/nano_config.log", s);
+    return;
   }
 }
 
@@ -153,6 +200,7 @@ textarea{width:100%;height:300px} .card{border:1px solid #aaa;padding:15px;margi
 placeholder='Paste validated .INI module profile here'></textarea><br>
 <button type='submit'>Validate & Save</button></form></div>
 <div class='card'><h2>SD Modules</h2><a href='/api/modules'>View module list</a></div>
+<div class='card'><h2>Reports</h2><a href='/api/reports'>View saved reports</a></div>
 <script>fetch('/api/status').then(r=>r.text()).then(t=>document.getElementById('status').innerText=t)</script>
 </body></html>
 )HTML";
@@ -236,6 +284,18 @@ void setupWeb() {
   server.on("/api/power/off", HTTP_GET, handlePowerOff);
   server.on("/api/module", HTTP_POST, handleModuleSave);
   server.on("/api/modules", HTTP_GET, handleModules);
+
+  // Module-profile-driven test orchestration (test_orchestrator.ino)
+  server.on("/api/module/select", HTTP_POST, handleModuleSelect);
+  server.on("/api/module/active", HTTP_GET, handleModuleActive);
+  server.on("/api/test/run", HTTP_POST, handleTestRun);
+  server.on("/api/reports", HTTP_GET, handleReportsList);
+
+  // System config: AP password / BLE PIN (config.ino)
+  server.on("/api/config", HTTP_GET, handleConfigStatus);
+  server.on("/api/config/wifi", HTTP_POST, handleConfigWifi);
+  server.on("/api/config/pin", HTTP_POST, handleConfigPin);
+
   server.begin();
 }
 
@@ -246,21 +306,29 @@ void setup() {
 
   NanoSerial.begin(115200, SERIAL_8N1, NANO_RX, NANO_TX);
 
-  if (!SD.begin(SD_CS)) {
+  bool sdReady = SD.begin(SD_CS);
+  if (!sdReady) {
     Serial.println("SD init failed.");
   } else {
     SD.mkdir("/MODULES");
     SD.mkdir("/REPORTS");
     SD.mkdir("/LOGS");
     Serial.println("SD ready.");
+    loadSystemConfig(); // config.ino - falls back to defaults if SD unavailable
   }
 
+  canInit(500000, 8000000);  // can_mcp2515.ino - 500 kbps @ 8 MHz osc, verify for your board
+  klineInit();                // kline_iso14230.ino
+
   WiFi.mode(WIFI_AP);
-  WiFi.softAP("TIFF_TESTER", "tifftester");
+  WiFi.softAP("TIFF_TESTER", sysConfig.apPassword.c_str());
   Serial.print("AP IP: ");
   Serial.println(WiFi.softAPIP());
 
   setupWeb();
+  bleInit(); // ble_service.ino
+
+  if (sdReady) logLine("/LOGS/system.log", "Boot complete.");
   lastHeartbeat = millis();
 }
 
@@ -277,6 +345,7 @@ void loop() {
 
   if (now - lastStatusPoll >= STATUS_POLL_MS) {
     sendNano("STATUS");
+    bleNotifyStatus(); // ble_service.ino
     lastStatusPoll = now;
   }
 

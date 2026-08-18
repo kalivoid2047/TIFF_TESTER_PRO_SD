@@ -18,11 +18,12 @@ jobs:
       # filename exactly. This repo organizes firmware by controller role
       # (ESP32_Firmware/, Arduino_Nano_Safety/) instead, so stage a
       # correctly-named copy for compilation rather than restructuring the
-      # repo.
+      # repo. The ESP32 sketch is split across several .ino tabs plus a
+      # shared_types.h header, so copy the whole directory's contents.
       - name: Stage sketch for compilation
         run: |
           mkdir -p /tmp/sketches/TIFF_TESTER_PRO_SD_ESP32
-          cp ESP32_Firmware/TIFF_TESTER_PRO_SD_ESP32.ino /tmp/sketches/TIFF_TESTER_PRO_SD_ESP32/
+          cp ESP32_Firmware/*.ino ESP32_Firmware/*.h /tmp/sketches/TIFF_TESTER_PRO_SD_ESP32/
 
       - name: Compile TIFF_TESTER_PRO_SD_ESP32.ino
         uses: arduino/compile-sketches@v1

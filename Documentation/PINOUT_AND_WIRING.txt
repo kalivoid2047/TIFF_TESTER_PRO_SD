@@ -9,9 +9,22 @@ SD_CS = GPIO5
 CAN_CS = GPIO15
 CAN_INT = GPIO4
 Nano UART = GPIO16/17
+K-Line UART (L9637D) = GPIO25 (RX) / GPIO26 (TX)
 DUT voltage ADC = GPIO34
 DUT current ADC = GPIO35
 Supply voltage ADC = GPIO32
+
+NOTE ON CAN_INT:
+CAN_INT (GPIO4) is wired but not yet used by firmware — the current
+MCP2515 driver (ESP32_Firmware/can_mcp2515.ino) polls CANINTF over SPI
+instead of using the interrupt line. Wire it anyway for a future
+interrupt-driven revision.
+
+NOTE ON K-LINE:
+ESP32_Firmware/kline_iso14230.ino implements ISO 14230 fast-init and basic
+request/response framing over this UART. It has not been validated
+against a real K-Line ECU — bench-test with a scope before trusting it
+against a vehicle module.
 
 Nano:
 D4  = DUT relay driver
@@ -23,8 +36,30 @@ A1  = Supply voltage
 A2  = Current sensor
 A3  = Temperature / spare
 
-NOTE:
-The relay module's electrical logic must match the firmware. If using an
-active-low relay module, invert the relay output logic in the Nano code.
+NOTE ON RELAY POLARITY:
+The relay module's electrical logic must match the firmware. This is now
+runtime-configurable instead of requiring a firmware edit: send
+`SET_RELAY_POLARITY,0` (active-high, GPIO HIGH = energized — the previous
+hardcoded default) or `SET_RELAY_POLARITY,1` (active-low module) to the
+Nano over UART; it persists to EEPROM. The Nano forces the relay off
+before and after changing this setting. You must still confirm which
+value is correct against your actual relay module on the bench — nothing
+here has verified your physical wiring for you.
+
+NOTE ON ADC CALIBRATION:
+SUPPLY_DIVIDER, DUT_DIVIDER, CURRENT_ZERO_V, and CURRENT_V_PER_A in the
+Nano firmware are uncalibrated placeholders. Use these UART commands
+against a trusted reference meter to calibrate and persist real values to
+EEPROM (see Arduino_Nano_Safety/TIFF_TESTER_PRO_SD_NANO.ino header
+comment for full command list):
+  CAL_SUPPLY,<actual_voltage>            (measure supply with a multimeter)
+  CAL_DUT,<actual_voltage>               (measure DUT rail with a multimeter)
+  CAL_CURRENT_ZERO                       (DUT off, captures the sensor's zero point)
+  CAL_CURRENT_SCALE,<actual_current_a>   (known load, measure with a trusted ammeter)
+  GET_CONFIG                             (reads back current calibration state)
+  RESET_CALIBRATION                      (reverts to firmware-default placeholders)
+No calibration has actually been performed against real hardware here —
+this only provides the mechanism; you still need to do it on your bench.
+
 Do not connect automotive 12 V signals directly to ESP32/Nano GPIO pins.
 Use suitable dividers, protection and/or isolation.

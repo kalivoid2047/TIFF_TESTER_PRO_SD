@@ -15,14 +15,27 @@
     POWER_OFF
     STATUS
     RESET_FAULT
+    CAL_SUPPLY,<actual_voltage>          calibrate supply divider ratio
+    CAL_DUT,<actual_voltage>             calibrate DUT divider ratio
+    CAL_CURRENT_ZERO                     capture current-sensor zero point (DUT off)
+    CAL_CURRENT_SCALE,<actual_current_a> calibrate current-sensor V/A scale
+    SET_RELAY_POLARITY,<0|1>             0=active-high (default), 1=active-low relay module
+    RESET_CALIBRATION                    revert to firmware-default constants
+    GET_CONFIG                           report current calibration/polarity state
 
   IMPORTANT:
-    Calibrate ADC scaling and current-sensor conversion for the actual
-    voltage divider/current sensor before connecting an automotive DUT.
+    Calibration and relay-polarity commands above give you a way to tune
+    this firmware to your actual hardware WITHOUT recompiling, but nobody
+    has run them against a real bench here. You must still perform the
+    calibration procedure yourself with a known-good reference (a trusted
+    multimeter for voltage, a trusted ammeter/known load for current) and
+    confirm relay polarity against your actual relay module before
+    connecting an automotive DUT. See Documentation/PROJECT_STATUS.md.
 */
 
 #include <Arduino.h>
 #include <avr/wdt.h>
+#include <EEPROM.h>
 
 // ---------- Pins ----------
 #define RELAY_PIN        4
@@ -45,16 +58,58 @@ const float MAX_CURRENT_A = 5.0;
 const float ADC_REF = 5.0;
 const float ADC_COUNTS = 1023.0;
 
-// Example voltage divider ratio.
-// Replace with the real divider ratio used on your board.
+// Firmware-default calibration constants. These are the values used until
+// a CAL_* command (see above) persists a bench-measured value to EEPROM.
+// They are placeholders, not calibrated numbers — replace via the CAL_*
+// commands rather than editing these before trusting a reading.
 const float SUPPLY_DIVIDER = 4.0;
 const float DUT_DIVIDER = 4.0;
+const float CURRENT_ZERO_V = 2.50;   // ACS712 5A: ~2.5V zero point
+const float CURRENT_V_PER_A = 0.185; // ACS712 5A: ~185 mV/A
 
-// Example current sensor:
-// ACS712 5A version is ~185 mV/A with ~2.5 V zero point.
-// Replace these values for the actual sensor.
-const float CURRENT_ZERO_V = 2.50;
-const float CURRENT_V_PER_A = 0.185;
+// ---------- EEPROM-backed calibration/config ----------
+#define EE_MAGIC_ADDR           0
+#define EE_MAGIC_VALUE          0xA5
+#define EE_SUPPLY_DIV_ADDR      1   // float, 4 bytes
+#define EE_DUT_DIV_ADDR         5   // float, 4 bytes
+#define EE_CUR_ZERO_ADDR        9   // float, 4 bytes
+#define EE_CUR_SCALE_ADDR       13  // float, 4 bytes
+#define EE_RELAY_POLARITY_ADDR  17  // byte
+
+float supplyDividerCal = SUPPLY_DIVIDER;
+float dutDividerCal = DUT_DIVIDER;
+float currentZeroCal = CURRENT_ZERO_V;
+float currentScaleCal = CURRENT_V_PER_A;
+bool relayActiveLow = false; // false = GPIO HIGH energizes (existing default behavior)
+bool calibrated = false;
+
+void loadCalibration() {
+  if (EEPROM.read(EE_MAGIC_ADDR) == EE_MAGIC_VALUE) {
+    EEPROM.get(EE_SUPPLY_DIV_ADDR, supplyDividerCal);
+    EEPROM.get(EE_DUT_DIV_ADDR, dutDividerCal);
+    EEPROM.get(EE_CUR_ZERO_ADDR, currentZeroCal);
+    EEPROM.get(EE_CUR_SCALE_ADDR, currentScaleCal);
+    relayActiveLow = EEPROM.read(EE_RELAY_POLARITY_ADDR) == 1;
+    calibrated = true;
+  } else {
+    supplyDividerCal = SUPPLY_DIVIDER;
+    dutDividerCal = DUT_DIVIDER;
+    currentZeroCal = CURRENT_ZERO_V;
+    currentScaleCal = CURRENT_V_PER_A;
+    relayActiveLow = false;
+    calibrated = false;
+  }
+}
+
+void saveCalibration() {
+  EEPROM.put(EE_SUPPLY_DIV_ADDR, supplyDividerCal);
+  EEPROM.put(EE_DUT_DIV_ADDR, dutDividerCal);
+  EEPROM.put(EE_CUR_ZERO_ADDR, currentZeroCal);
+  EEPROM.put(EE_CUR_SCALE_ADDR, currentScaleCal);
+  EEPROM.write(EE_RELAY_POLARITY_ADDR, relayActiveLow ? 1 : 0);
+  EEPROM.write(EE_MAGIC_ADDR, EE_MAGIC_VALUE);
+  calibrated = true;
+}
 
 // ---------- Watchdog / heartbeat ----------
 const unsigned long HEARTBEAT_TIMEOUT_MS = 2000;
@@ -77,22 +132,31 @@ float adcVoltage(uint8_t pin) {
 }
 
 float readSupplyVoltage() {
-  return adcVoltage(SUPPLY_VOLT_PIN) * SUPPLY_DIVIDER;
+  return adcVoltage(SUPPLY_VOLT_PIN) * supplyDividerCal;
 }
 
 float readDutVoltage() {
-  return adcVoltage(DUT_VOLT_PIN) * DUT_DIVIDER;
+  return adcVoltage(DUT_VOLT_PIN) * dutDividerCal;
 }
 
 float readCurrent() {
   float v = adcVoltage(CURRENT_PIN);
-  float a = (v - CURRENT_ZERO_V) / CURRENT_V_PER_A;
+  float a = (v - currentZeroCal) / currentScaleCal;
   if (a < 0) a = -a;
   return a;
 }
 
+// Maps a logical "energize/de-energize" request to the correct physical
+// GPIO level for the configured relay polarity, so relayActiveLow can be
+// changed at runtime (via SET_RELAY_POLARITY) without touching any other
+// safety logic below.
+void writeRelayPhysical(bool energize) {
+  bool pinHigh = relayActiveLow ? !energize : energize;
+  digitalWrite(RELAY_PIN, pinHigh ? HIGH : LOW);
+}
+
 void relayOff(const char *reason = "") {
-  digitalWrite(RELAY_PIN, LOW); // relay module must be wired so LOW = OFF
+  writeRelayPhysical(false);
   relayOn = false;
 
   if (reason && strlen(reason)) {
@@ -149,7 +213,7 @@ void relayOnSafe() {
     return;
   }
 
-  digitalWrite(RELAY_PIN, HIGH);
+  writeRelayPhysical(true);
   relayOn = true;
 
   // Recheck after energizing.
@@ -176,6 +240,21 @@ void sendStatus() {
   Serial.print(currentA, 2);
   Serial.print(",");
   Serial.println(faultText);
+}
+
+void sendConfig() {
+  Serial.print("CONFIG,");
+  Serial.print(supplyDividerCal, 4);
+  Serial.print(",");
+  Serial.print(dutDividerCal, 4);
+  Serial.print(",");
+  Serial.print(currentZeroCal, 4);
+  Serial.print(",");
+  Serial.print(currentScaleCal, 4);
+  Serial.print(",");
+  Serial.print(relayActiveLow ? 1 : 0);
+  Serial.print(",");
+  Serial.println(calibrated ? 1 : 0);
 }
 
 void processCommand(String cmd) {
@@ -209,6 +288,83 @@ void processCommand(String cmd) {
     sendStatus();
     return;
   }
+
+  if (cmd.startsWith("CAL_SUPPLY,")) {
+    lastHeartbeat = millis();
+    float actual = cmd.substring(String("CAL_SUPPLY,").length()).toFloat();
+    float raw = adcVoltage(SUPPLY_VOLT_PIN);
+    if (actual > 0.0 && raw > 0.05) {
+      supplyDividerCal = actual / raw;
+      saveCalibration();
+    }
+    sendConfig();
+    return;
+  }
+
+  if (cmd.startsWith("CAL_DUT,")) {
+    lastHeartbeat = millis();
+    float actual = cmd.substring(String("CAL_DUT,").length()).toFloat();
+    float raw = adcVoltage(DUT_VOLT_PIN);
+    if (actual > 0.0 && raw > 0.05) {
+      dutDividerCal = actual / raw;
+      saveCalibration();
+    }
+    sendConfig();
+    return;
+  }
+
+  if (cmd == "CAL_CURRENT_ZERO") {
+    lastHeartbeat = millis();
+    currentZeroCal = adcVoltage(CURRENT_PIN);
+    saveCalibration();
+    sendConfig();
+    return;
+  }
+
+  if (cmd.startsWith("CAL_CURRENT_SCALE,")) {
+    lastHeartbeat = millis();
+    float actual = cmd.substring(String("CAL_CURRENT_SCALE,").length()).toFloat();
+    float v = adcVoltage(CURRENT_PIN);
+    float delta = v - currentZeroCal;
+    if (delta < 0) delta = -delta;
+    if (actual > 0.01 && delta > 0.001) {
+      currentScaleCal = delta / actual;
+      saveCalibration();
+    }
+    sendConfig();
+    return;
+  }
+
+  if (cmd.startsWith("SET_RELAY_POLARITY,")) {
+    lastHeartbeat = millis();
+    relayOff("POLARITY_CHANGE"); // force safe state under the OLD polarity first
+    int v = cmd.substring(String("SET_RELAY_POLARITY,").length()).toInt();
+    relayActiveLow = (v == 1);
+    writeRelayPhysical(false); // re-assert de-energized under the NEW polarity
+    saveCalibration();
+    sendConfig();
+    return;
+  }
+
+  if (cmd == "RESET_CALIBRATION") {
+    lastHeartbeat = millis();
+    relayOff("POLARITY_CHANGE");
+    supplyDividerCal = SUPPLY_DIVIDER;
+    dutDividerCal = DUT_DIVIDER;
+    currentZeroCal = CURRENT_ZERO_V;
+    currentScaleCal = CURRENT_V_PER_A;
+    relayActiveLow = false;
+    writeRelayPhysical(false);
+    calibrated = false;
+    EEPROM.write(EE_MAGIC_ADDR, 0x00);
+    sendConfig();
+    return;
+  }
+
+  if (cmd == "GET_CONFIG") {
+    sendConfig();
+    return;
+  }
 }
 
 void readSerialCommands() {
@@ -225,15 +381,19 @@ void readSerialCommands() {
 }
 
 void setup() {
+  // Load calibration/polarity before touching the relay pin, so the very
+  // first output write already respects whatever polarity was last saved.
+  loadCalibration();
+
   // Ensure outputs are safe before enabling anything.
-  digitalWrite(RELAY_PIN, LOW);
+  digitalWrite(RELAY_PIN, relayActiveLow ? HIGH : LOW); // de-energized, pre-pinMode
   pinMode(RELAY_PIN, OUTPUT);
+  writeRelayPhysical(false);
 
   pinMode(ESTOP_PIN, INPUT_PULLUP);
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(STATUS_LED, OUTPUT);
 
-  digitalWrite(RELAY_PIN, LOW);
   digitalWrite(BUZZER_PIN, LOW);
 
   Serial.begin(115200);
