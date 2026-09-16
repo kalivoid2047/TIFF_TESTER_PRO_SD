@@ -45,6 +45,23 @@ class TestResult {
     );
   }
 
+  /// Serializes for local persistence (SharedPreferences JSON blob) —
+  /// distinct from the wire format `parse()` reads, which never round-trips
+  /// a timestamp.
+  Map<String, dynamic> toJson() => {
+        'testType': testType,
+        'pass': pass,
+        'response': response,
+        'timestamp': timestamp.toIso8601String(),
+      };
+
+  factory TestResult.fromJson(Map<String, dynamic> json) => TestResult(
+        testType: json['testType'] as String,
+        pass: json['pass'] as bool,
+        response: json['response'] as String,
+        timestamp: DateTime.parse(json['timestamp'] as String),
+      );
+
   /// Human-friendly label for the Results list, e.g. "resistance" ->
   /// "Resistance Test".
   String get displayName {

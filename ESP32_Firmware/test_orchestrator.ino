@@ -42,6 +42,20 @@ static String iniString(const String &data, const String &key) {
   return v;
 }
 
+// Extracts the text of one `[SECTION]` block (up to the next `[` header or
+// EOF) so same-named keys in different sections (e.g. "enabled=" under both
+// [TEST_INJECTOR] and [TEST_COIL]) don't collide — iniFlag()/iniFloat()/
+// iniString() above are otherwise section-agnostic, flat substring scans.
+static String iniSection(const String &data, const String &header) {
+  int pos = data.indexOf(header);
+  if (pos < 0) return "";
+  int start = data.indexOf('\n', pos);
+  if (start < 0) return "";
+  start += 1;
+  int end = data.indexOf("\n[", start);
+  return data.substring(start, end < 0 ? data.length() : end);
+}
+
 bool loadActiveModule(const String &id) {
   String path = modulePathFromId(id);
   File f = SD.open(path, FILE_READ);
@@ -63,6 +77,19 @@ bool loadActiveModule(const String &id) {
   activeModule.testActuatorMovement = iniFlag(data, "actuator_movement");
   activeModule.testCurrentMonitor = iniFlag(data, "current_monitor");
   activeModule.testPassFail = iniFlag(data, "pass_fail");
+
+  String injSection = iniSection(data, "[TEST_INJECTOR]");
+  activeModule.testInjectorEnabled = iniFlag(injSection, "enabled");
+  activeModule.injectorDefaultPulseWidthMs = iniFloat(injSection, "default_pulse_width_ms", 0);
+  activeModule.injectorMaxPulseWidthMs = iniFloat(injSection, "max_pulse_width_ms", 0);
+  activeModule.injectorDefaultDurationS = (int)iniFloat(injSection, "default_test_duration_s", 0);
+
+  String coilSection = iniSection(data, "[TEST_COIL]");
+  activeModule.testCoilEnabled = iniFlag(coilSection, "enabled");
+  activeModule.coilDefaultDwellMs = iniFloat(coilSection, "default_dwell_ms", 0);
+  activeModule.coilMaxDwellMs = iniFloat(coilSection, "max_dwell_ms", 0);
+  activeModule.coilDefaultDurationS = (int)iniFloat(coilSection, "default_test_duration_s", 0);
+
   activeModule.serviceTurboCal = iniFlag(data, "turbo_actuator_calibration");
   activeModule.serviceDpfRegen = iniFlag(data, "dpf_forced_regeneration");
   activeModule.serviceInjectorLearn = iniFlag(data, "injector_pilot_learn");
@@ -200,6 +227,10 @@ void handleModuleActive() {
                " position_sweep_test=" + String(activeModule.testPositionSweep) +
                " actuator_movement_test=" + String(activeModule.testActuatorMovement) +
                " current_monitor_test=" + String(activeModule.testCurrentMonitor) +
+               " injector_test=" + String(activeModule.testInjectorEnabled) +
+               " injector_max_pulse_width_ms=" + String(activeModule.injectorMaxPulseWidthMs, 1) +
+               " coil_test=" + String(activeModule.testCoilEnabled) +
+               " coil_max_dwell_ms=" + String(activeModule.coilMaxDwellMs, 1) +
                " comm_protocol=" + activeModule.commProtocol;
   server.send(200, "text/plain", out);
 }

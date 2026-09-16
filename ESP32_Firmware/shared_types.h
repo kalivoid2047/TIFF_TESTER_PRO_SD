@@ -39,6 +39,17 @@ struct ModuleProfile {
   bool testActuatorMovement = false;
   bool testCurrentMonitor = false;
   bool testPassFail = false;
+  // [TEST_INJECTOR]/[TEST_COIL] (Documentation/SRS.md §6.1) — pulse-width/
+  // dwell limits consumed by the Nano's INJ_TEST/COIL_TEST safety
+  // supervision (see Arduino_Nano_Safety). No driver hardware to actually
+  // fire yet (Documentation/ROADMAP.md Phase 1), so these are parsed and
+  // reported but not yet dispatched from a test-run handler.
+  bool testInjectorEnabled = false;
+  float injectorDefaultPulseWidthMs = 0, injectorMaxPulseWidthMs = 0;
+  int injectorDefaultDurationS = 0;
+  bool testCoilEnabled = false;
+  float coilDefaultDwellMs = 0, coilMaxDwellMs = 0;
+  int coilDefaultDurationS = 0;
   bool serviceTurboCal = false;
   bool serviceDpfRegen = false;
   bool serviceInjectorLearn = false;

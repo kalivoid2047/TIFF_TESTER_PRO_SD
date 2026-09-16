@@ -34,6 +34,7 @@ class TiffBleService {
   BluetoothCharacteristic? _commandChar;
   BluetoothCharacteristic? _resultChar;
   BluetoothCharacteristic? _deviceInfoChar;
+  BluetoothCharacteristic? _modulesChar;
 
   StreamSubscription<List<int>>? _statusSub;
   StreamSubscription<List<int>>? _resultSub;
@@ -88,6 +89,7 @@ class TiffBleService {
       if (c.uuid == TiffBleUuids.command) _commandChar = c;
       if (c.uuid == TiffBleUuids.result) _resultChar = c;
       if (c.uuid == TiffBleUuids.deviceInfo) _deviceInfoChar = c;
+      if (c.uuid == TiffBleUuids.modules) _modulesChar = c;
     }
 
     if (_statusChar != null) {
@@ -152,6 +154,20 @@ class TiffBleService {
     return utf8.decode(bytes);
   }
 
+  /// Reads the module list characteristic and parses the firmware's
+  /// "MODULES\n<file1>\n<file2>..." text (see `moduleListText()` in
+  /// TIFF_TESTER_PRO_SD_ESP32.ino) into module ids — the `.INI` filename
+  /// stem, matching what `SELECT_MODULE:<id>` expects.
+  Future<List<String>> readModuleList() async {
+    final c = _modulesChar;
+    if (c == null) return const [];
+    final bytes = await c.read();
+    final text = utf8.decode(bytes);
+    final lines = text.split('\n').map((l) => l.trim()).where((l) =>
+        l.isNotEmpty && l != 'MODULES' && l.toUpperCase().endsWith('.INI'));
+    return lines.map((f) => f.substring(0, f.length - 4)).toList();
+  }
+
   Future<void> disconnect() async {
     await _device?.disconnect();
     _cleanupAfterDisconnect();
@@ -167,6 +183,7 @@ class TiffBleService {
     _commandChar = null;
     _resultChar = null;
     _deviceInfoChar = null;
+    _modulesChar = null;
   }
 
   void dispose() {

@@ -44,6 +44,17 @@ class BleAuthCallbacks : public BLECharacteristicCallbacks {
   }
 };
 
+// Defined in TIFF_TESTER_PRO_SD_ESP32.ino, shared with the /api/modules web
+// handler so both surfaces list the same SD-backed module files.
+bool moduleListText(String &out);
+
+class BleModulesCallbacks : public BLECharacteristicCallbacks {
+  void onRead(BLECharacteristic *c) override {
+    String out;
+    if (moduleListText(out)) c->setValue(out.c_str());
+  }
+};
+
 class BleCommandCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *c) override {
     String cmd = c->getValue().c_str();
@@ -164,6 +175,11 @@ void bleInit() {
   bleResultChar->addDescriptor(new BLE2902());
 
   bleModulesChar = svc->createCharacteristic(BLE_CHAR_MODULES_UUID, BLECharacteristic::PROPERTY_READ);
+  bleModulesChar->setCallbacks(new BleModulesCallbacks());
+  {
+    String out;
+    if (moduleListText(out)) bleModulesChar->setValue(out.c_str());
+  }
 
   bleDevInfoChar = svc->createCharacteristic(BLE_CHAR_DEVINFO_UUID, BLECharacteristic::PROPERTY_READ);
   bleDevInfoChar->setValue("TIFF_TESTER_PRO_SD_ESP32");

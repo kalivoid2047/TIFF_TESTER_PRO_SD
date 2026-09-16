@@ -22,6 +22,20 @@
     SET_RELAY_POLARITY,<0|1>             0=active-high (default), 1=active-low relay module
     RESET_CALIBRATION                    revert to firmware-default constants
     GET_CONFIG                           report current calibration/polarity state
+    INJ_TEST,<channel>,<pulse_width_ms>,<duration_s>   start injector test window
+    COIL_TEST,<channel>,<dwell_ms>,<duration_s>        start coil test window
+    TEST_STOP                                          end the current test window
+
+  IMPORTANT re: INJ_TEST/COIL_TEST — there is no injector/coil driver
+  hardware on this board yet (Documentation/ROADMAP.md Phase 1), so these
+  commands do NOT pulse anything. What they DO is exactly what
+  Documentation/API_PROTOCOL_SPEC.md §4.3 asks for ahead of that hardware
+  landing: accept the request, clamp the requested pulse-width/dwell to a
+  hard-coded max regardless of input, run safetyOK() continuously for the
+  duration of the test window (not just once before starting, the way
+  relayOnSafe() does for the DUT relay), and report TEST_STATUS lines. Once
+  Phase 1 hardware exists, the actual driver GPIO write slots into
+  startTestWindow()/stopTestWindow() below.
 
   IMPORTANT:
     Calibration and relay-polarity commands above give you a way to tune
@@ -53,6 +67,13 @@ const float MIN_SUPPLY_V = 11.0;
 const float MAX_SUPPLY_V = 15.0;
 const float MAX_DUT_V    = 15.0;
 const float MAX_CURRENT_A = 5.0;
+
+// Hard caps for INJ_TEST/COIL_TEST, enforced regardless of what the ESP32
+// requests (Documentation/API_PROTOCOL_SPEC.md §4.3, SRS FR-INJ-4/FR-COIL-4).
+// Match the max_pulse_width_ms/max_dwell_ms defaults proposed in SRS §6.1.
+const float MAX_PULSE_WIDTH_MS = 8.0;
+const float MAX_DWELL_MS = 8.0;
+const unsigned long MAX_TEST_DURATION_S = 30;
 
 // Adjust these for your actual analog circuits.
 const float ADC_REF = 5.0;
@@ -126,6 +147,17 @@ String rxLine;
 float supplyV = 0;
 float dutV = 0;
 float currentA = 0;
+
+// ---------- Injector/coil test window state ----------
+// See the file header for why this is safety-supervision-only for now (no
+// driver hardware to actually pulse).
+const unsigned long TEST_STATUS_INTERVAL_MS = 500;
+bool testActive = false;
+String testType = "";        // "INJ" or "COIL"
+int testChannel = 0;
+unsigned long testStartMs = 0;
+unsigned long testDurationS = 0;
+unsigned long lastTestStatus = 0;
 
 float adcVoltage(uint8_t pin) {
   return (analogRead(pin) * ADC_REF) / ADC_COUNTS;
@@ -223,6 +255,54 @@ void relayOnSafe() {
   }
 }
 
+// status: "TESTING" | "DONE" | "STOPPED" | "FAULT"
+// result: "PASS" | "FAIL" | "" (unknown/not yet evaluated)
+void sendTestStatus(const char *status, const char *result, const char *faultReason) {
+  unsigned long elapsedS = (millis() - testStartMs) / 1000UL;
+  Serial.print("TEST_STATUS,");
+  Serial.print(testType);
+  Serial.print(",");
+  Serial.print(testChannel);
+  Serial.print(",");
+  Serial.print(status);
+  Serial.print(",");
+  Serial.print(elapsedS);
+  Serial.print(",");
+  Serial.print(currentA, 2);
+  Serial.print(",");
+  Serial.print(result);
+  Serial.print(",");
+  Serial.println(faultReason);
+}
+
+// Starts a supervised test window. `paramMs` is the requested
+// pulse-width/dwell (clamped to the hard cap before this is called);
+// `durationS` is clamped to MAX_TEST_DURATION_S. Refuses to start under the
+// same safetyOK() gate relayOnSafe() uses for the DUT relay.
+void startTestWindow(const char *type, int channel, unsigned long durationS) {
+  if (!safetyOK()) {
+    testType = type;
+    testChannel = channel;
+    testStartMs = millis();
+    sendTestStatus("FAULT", "", faultText.c_str());
+    return;
+  }
+
+  testActive = true;
+  testType = type;
+  testChannel = channel;
+  testStartMs = millis();
+  testDurationS = min(durationS, MAX_TEST_DURATION_S);
+  lastTestStatus = 0; // force an immediate status line below
+  sendTestStatus("TESTING", "", "");
+}
+
+void stopTestWindow(const char *status, const char *result, const char *faultReason) {
+  if (!testActive) return;
+  testActive = false;
+  sendTestStatus(status, result, faultReason);
+}
+
 void sendStatus() {
   Serial.print("STATUS,");
   Serial.print(relayOn ? 1 : 0);
@@ -275,6 +355,7 @@ void processCommand(String cmd) {
     lastHeartbeat = millis();
     relayOff();
     clearFault();
+    stopTestWindow("STOPPED", "", "");
     return;
   }
 
@@ -365,6 +446,45 @@ void processCommand(String cmd) {
     sendConfig();
     return;
   }
+
+  // INJ_TEST,<channel>,<pulse_width_ms>,<duration_s> /
+  // COIL_TEST,<channel>,<dwell_ms>,<duration_s> — see file header. Per
+  // API_PROTOCOL_SPEC.md §4.3, a pulse-width/dwell above the hard-coded max
+  // is rejected outright (the window never starts) rather than silently
+  // clamped, since there's no driver output yet to actually apply a
+  // clamped value to.
+  if (cmd.startsWith("INJ_TEST,") || cmd.startsWith("COIL_TEST,")) {
+    lastHeartbeat = millis();
+    bool isInjector = cmd.startsWith("INJ_TEST,");
+    String params = cmd.substring(cmd.indexOf(',') + 1);
+
+    int c1 = params.indexOf(',');
+    int c2 = c1 < 0 ? -1 : params.indexOf(',', c1 + 1);
+    if (c1 < 0 || c2 < 0) return; // malformed, ignore
+
+    int channel = params.substring(0, c1).toInt();
+    float paramMs = params.substring(c1 + 1, c2).toFloat();
+    unsigned long durationS = (unsigned long)params.substring(c2 + 1).toInt();
+
+    const char *type = isInjector ? "INJ" : "COIL";
+    float cap = isInjector ? MAX_PULSE_WIDTH_MS : MAX_DWELL_MS;
+    if (paramMs < 0 || paramMs > cap) {
+      testType = type;
+      testChannel = channel;
+      testStartMs = millis();
+      sendTestStatus("FAULT", "", "PARAM_EXCEEDS_MAX");
+      return;
+    }
+
+    startTestWindow(type, channel, durationS);
+    return;
+  }
+
+  if (cmd == "TEST_STOP") {
+    lastHeartbeat = millis();
+    stopTestWindow("STOPPED", "", "");
+    return;
+  }
 }
 
 void readSerialCommands() {
@@ -427,6 +547,23 @@ void loop() {
 
   if (digitalRead(ESTOP_PIN) == LOW) {
     relayOff("ESTOP");
+  }
+
+  // Continuous supervision for the duration of an injector/coil test window
+  // — not just a check before it starts, matching relayOnSafe()'s
+  // recheck-after-energize pattern but held for the whole window.
+  if (testActive) {
+    if (!safetyOK()) {
+      stopTestWindow("FAULT", "", faultText.c_str());
+    } else if (now - lastHeartbeat > HEARTBEAT_TIMEOUT_MS) {
+      stopTestWindow("FAULT", "", "ESP32_HEARTBEAT_TIMEOUT");
+    } else if ((now - testStartMs) / 1000UL >= testDurationS) {
+      stopTestWindow("DONE", "",
+          "NOT_IMPLEMENTED - no injector/coil driver hardware, safety-only supervision");
+    } else if (now - lastTestStatus >= TEST_STATUS_INTERVAL_MS) {
+      sendTestStatus("TESTING", "", "");
+      lastTestStatus = now;
+    }
   }
 
   if (now - lastStatus >= STATUS_INTERVAL_MS) {

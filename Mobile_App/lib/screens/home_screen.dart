@@ -7,6 +7,7 @@ import '../widgets/app_card.dart';
 import 'all_injectors_test_screen.dart';
 import 'coil_test_screen.dart';
 import 'injector_test_screen.dart';
+import 'module_selection_screen.dart';
 import 'scan_screen.dart';
 import 'system_info_screen.dart';
 
@@ -76,6 +77,26 @@ class HomeScreen extends StatelessWidget {
                     }
                   },
                   child: Text(connected ? 'DISCONNECT' : 'SCAN FOR DEVICES'),
+                ),
+              ],
+            ),
+          ),
+          AppCard(
+            title: 'Module',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                StatusRow(
+                  label: 'Active profile',
+                  value: app.activeModuleId ?? 'None selected',
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: connected
+                      ? () => Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => const ModuleSelectionScreen()))
+                      : null,
+                  child: const Text('SELECT MODULE'),
                 ),
               ],
             ),

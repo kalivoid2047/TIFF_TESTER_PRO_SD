@@ -116,14 +116,29 @@ pieces are still blocked on Phase 1 hardware.**
       input. Still blocked on Phase 1 driver hardware — today
       `RUN_INJECTOR_TEST`/`RUN_COIL_TEST`/`RUN_ALL_INJECTORS` exist at the
       BLE layer but honestly report `NOT_IMPLEMENTED`.
-- [ ] Nano: extend `safetyOK()`-style supervision to run continuously
-      during a test, not just before it starts (mirrors existing relay
-      re-check-after-energize pattern in `relayOnSafe()`).
-- [ ] Nano: extend status reporting with `TEST_STATUS` lines.
-- [ ] ESP32: extend module `.INI` schema support for `[TEST_INJECTOR]`/
-      `[TEST_COIL]` sections (SRS §6.1); update
-      `HILUX_1KD_TURBO.INI` and add at least a couple more example
-      profiles.
+- [x] Nano: `INJ_TEST`/`COIL_TEST`/`TEST_STOP` command handling added
+      (`startTestWindow()`/`stopTestWindow()`), with the requested
+      pulse-width/dwell rejected outright (not silently clamped) against a
+      hard-coded `MAX_PULSE_WIDTH_MS`/`MAX_DWELL_MS`, independent of what
+      the ESP32 sends.
+- [x] Nano: `safetyOK()`-style supervision now runs continuously for the
+      whole duration of a test window (`testActive` state checked every
+      `loop()` iteration), not just once before it starts — mirrors
+      `relayOnSafe()`'s recheck-after-energize pattern but held open.
+      Still safety-supervision-only: no injector/coil driver GPIO exists to
+      actually pulse (Phase 1), so a completed window reports
+      `NOT_IMPLEMENTED` rather than a fabricated PASS/FAIL.
+- [x] Nano: status reporting extended with `TEST_STATUS,<type>,<channel>,
+      <status>,<elapsed_s>,<last_current_a>,<result>,<faulttext>` lines per
+      API_PROTOCOL_SPEC.md §4.3.
+- [x] ESP32: module `.INI` schema extended with `[TEST_INJECTOR]`/
+      `[TEST_COIL]` sections (SRS §6.1) — `iniSection()` added to
+      `test_orchestrator.ino` so same-named keys (`enabled=`) in different
+      sections no longer collide in the flat key scanner; `ModuleProfile`
+      gained the corresponding fields; `HILUX_1KD_TURBO.INI` updated
+      (disabled — it's a turbo actuator, not an injector/coil module).
+      Additional example profiles for other vehicle families not yet
+      added.
 
 **Exit criteria:** a BLE client can pair with a PIN, request an injector
 pulse test, and receive status/result notifications, with the Nano safety
@@ -166,12 +181,19 @@ yet run against real hardware.**
 - [x] Splash screen (screen 1).
 - [x] Filled the UI gaps from UI_UX_SPEC §6: System Info and Settings
       screens built (first-pass, no reference design existed); Tests tab
-      resolved as a fuller test menu; module-selection screen and
-      empty/error states beyond the basics **still not done** (see below).
-- [ ] Local persistence for in-session results across app restarts (SRS
-      NFR-REL-1) — currently session-only, not yet implemented.
-- [ ] Module-profile selection screen — the app can send `SELECT_MODULE`
-      but has no UI to pick from the SD card's module list yet.
+      resolved as a fuller test menu; module-selection screen now built
+      (see below). Empty/error states beyond the basics still open.
+- [x] Local persistence for in-session results across app restarts (SRS
+      NFR-REL-1) — `TestResult.toJson()`/`fromJson()` added, `AppState`
+      now persists/restores the full results list (capped at 200 entries)
+      via `shared_preferences`, replacing the previous count-only stub.
+- [x] Module-profile selection screen (`module_selection_screen.dart`) —
+      reads the BLE modules characteristic (`readModuleList()` in
+      `tiff_ble_service.dart`, newly wired up; firmware's
+      `bleModulesChar` now actually populated via `moduleListText()`,
+      shared with the existing `/api/modules` web handler) and calls
+      `selectModule()`. Reachable from a new "Module" card on the Home
+      screen.
 
 **Exit criteria (not yet met):** a technician can complete the full flow —
 scan, pair, run one injector test and one coil test, view results, save a

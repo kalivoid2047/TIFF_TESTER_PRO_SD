@@ -269,19 +269,28 @@ void handleModuleSave() {
   server.send(200, "text/plain", "Saved: " + path);
 }
 
-void handleModules() {
+// Shared by the web API and the BLE modules characteristic (ble_service.ino)
+// so both surfaces list the same "MODULES\n<file1>\n<file2>..." text.
+// Returns false (with `out` untouched) if the directory can't be opened.
+bool moduleListText(String &out) {
   File dir = SD.open("/MODULES");
-  if (!dir || !dir.isDirectory()) {
-    server.send(500, "text/plain", "MODULES directory unavailable.");
-    return;
-  }
+  if (!dir || !dir.isDirectory()) return false;
 
-  String out = "MODULES\n";
+  out = "MODULES\n";
   File f = dir.openNextFile();
   while (f) {
     if (!f.isDirectory()) out += String(f.name()) + "\n";
     f.close();
     f = dir.openNextFile();
+  }
+  return true;
+}
+
+void handleModules() {
+  String out;
+  if (!moduleListText(out)) {
+    server.send(500, "text/plain", "MODULES directory unavailable.");
+    return;
   }
   server.send(200, "text/plain", out);
 }

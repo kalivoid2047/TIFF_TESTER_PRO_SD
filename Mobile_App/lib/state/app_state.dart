@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -25,6 +26,13 @@ class AppState extends ChangeNotifier {
   NanoStatus nanoStatus = const NanoStatus.unknown();
   final List<TestResult> results = [];
 
+  /// The `.INI` filename stem of the module selected via `selectModule()`
+  /// this session — null until one is picked (see Module Selection screen,
+  /// Documentation/ROADMAP.md Phase 3). Not read back from the firmware, so
+  /// it doesn't survive a reconnect to a device that already has a module
+  /// selected from elsewhere.
+  String? activeModuleId;
+
   /// Default PIN shown on the Connect screen (Documentation/UI_UX_SPEC.md
   /// §4.4). Matches the firmware's default in config.ino — change both if
   /// you change one.
@@ -43,7 +51,7 @@ class AppState extends ChangeNotifier {
     _resultSub = ble.resultStream.listen((r) {
       results.insert(0, r); // newest first, matches Results screen (§4.10)
       notifyListeners();
-      _persistResultsCount();
+      _persistResults();
     });
 
     _connectionSub = ble.connectionStateStream.listen((state) {
@@ -51,11 +59,12 @@ class AppState extends ChangeNotifier {
         connectionState = AppConnectionState.disconnected;
         connectedDevice = null;
         nanoStatus = const NanoStatus.unknown();
+        activeModuleId = null;
         notifyListeners();
       }
     });
 
-    _restoreResultsCountHint();
+    _restoreResults();
   }
 
   Future<void> connectAndAuthenticate(
@@ -92,8 +101,13 @@ class AppState extends ChangeNotifier {
   Future<void> powerOff() => ble.sendCommand('POWER_OFF');
   Future<void> resetFault() => ble.sendCommand('RESET_FAULT');
 
-  Future<void> selectModule(String moduleId) =>
-      ble.sendCommand('SELECT_MODULE:$moduleId');
+  Future<void> selectModule(String moduleId) async {
+    await ble.sendCommand('SELECT_MODULE:$moduleId');
+    activeModuleId = moduleId;
+    notifyListeners();
+  }
+
+  Future<List<String>> fetchModuleList() => ble.readModuleList();
 
   Future<void> runQuickTest(String testName) =>
       ble.sendCommand('RUN_TEST:$testName');
@@ -131,7 +145,7 @@ class AppState extends ChangeNotifier {
   void clearResults() {
     results.clear();
     notifyListeners();
-    _persistResultsCount();
+    _persistResults();
   }
 
   Future<void> _rememberLastDevice(String remoteId) async {
@@ -144,15 +158,35 @@ class AppState extends ChangeNotifier {
     return prefs.getString('last_device_id');
   }
 
-  Future<void> _persistResultsCount() async {
+  /// Results are capped at this many entries locally — enough for a full
+  /// bench session's history without the persisted blob growing unbounded.
+  static const int _maxStoredResults = 200;
+
+  Future<void> _persistResults() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('last_results_count', results.length);
+    final stored = results.take(_maxStoredResults).toList();
+    await prefs.setString(
+      'stored_results',
+      jsonEncode(stored.map((r) => r.toJson()).toList()),
+    );
   }
 
-  Future<void> _restoreResultsCountHint() async {
-    // Only a hint for now (e.g. a future "you had N unsaved results" nudge)
-    // — full result persistence across app restarts is a nice-to-have not
-    // yet implemented; see Documentation/ROADMAP.md Phase 4.
+  Future<void> _restoreResults() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('stored_results');
+    if (raw == null) return;
+
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      results
+        ..clear()
+        ..addAll(decoded
+            .map((e) => TestResult.fromJson(e as Map<String, dynamic>)));
+      notifyListeners();
+    } catch (_) {
+      // Corrupt/old-format blob (e.g. the previous int-only format) — start
+      // fresh rather than crashing the app on launch.
+    }
   }
 
   @override
