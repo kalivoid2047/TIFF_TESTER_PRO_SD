@@ -1,16 +1,17 @@
 # Development Roadmap
 ## TIFF TESTER PRO — Full System
 
-_Version: 0.1 (Draft) — 2026-08-18_
+_Version: 0.2 (Draft) — 2026-09-16_
 _Rolls up: [PRD.md](PRD.md), [SRS.md](SRS.md), [ARCHITECTURE.md](ARCHITECTURE.md),
 [UI_UX_SPEC.md](UI_UX_SPEC.md), [API_PROTOCOL_SPEC.md](API_PROTOCOL_SPEC.md)_
 
 This roadmap takes the project from its current state
-([PROJECT_STATUS.md](PROJECT_STATUS.md): bench Wi-Fi-only firmware, no
-mobile app, no injector/coil driver hardware) to the full product described
-in the PRD. Phases are ordered by dependency, not calendar time — treat
-durations as relative-effort placeholders to be reforecast once a team size
-is known.
+([PROJECT_STATUS.md](PROJECT_STATUS.md): BLE-connected ESP32/Nano bench
+firmware with a working Flutter mobile app, CAN and K-Line drivers
+implemented but not hardware-validated, and no injector/coil driver
+hardware yet) to the full product described in the PRD. Phases are ordered
+by dependency, not calendar time — treat durations as relative-effort
+placeholders to be reforecast once a team size is known.
 
 ---
 
@@ -20,21 +21,28 @@ is known.
 
 - [x] PRD, SRS, Architecture, UI/UX spec, API/protocol spec drafted (this
       batch of documents).
-- [ ] Resolve open items called out in SRS §8 and PRD §9:
-  - Wi-Fi-always-on vs. on-demand alongside BLE.
-  - BLE auth: Option A vs. B (API_PROTOCOL_SPEC §3).
-  - Android minimum SDK.
-  - PDF library choice.
-  - Injector/coil driver circuit topology (needs a hardware engineer's
-    input, not just firmware).
-- [ ] Fill UI gaps flagged in UI_UX_SPEC §6 (System Info, Settings, Tests
-      tab, empty/error states, module-selection screen) with real reference
-      designs or explicit sign-off to design them fresh.
-- [ ] Initialize git version control for this repository (currently none),
-      so all following phases are tracked.
+- [x] Git version control initialized, pushed to a GitHub remote, with CI
+      (compiles both sketches + builds the app), Dependabot, MIT license,
+      and community-health files — see [PROJECT_STATUS.md](PROJECT_STATUS.md).
+- [x] BLE auth: Option A (app-layer PIN check) chosen and implemented in
+      `ble_service.ino`; link-layer encryption/bonding explicitly deferred
+      (see Phase 4).
+- [x] Android minimum SDK: 26, implemented in the Flutter app.
+- [x] PDF library choice: `pdf`/`printing` packages, implemented.
+- [ ] Remaining open item from SRS §8/PRD §9: Wi-Fi-always-on vs. on-demand
+      alongside BLE — current firmware runs both concurrently (see Phase 2
+      coexistence note); revisit only if resource pressure resurfaces.
+- [ ] Injector/coil driver circuit topology (needs a hardware engineer's
+      input, not just firmware) — still open, blocks Phase 1.
+- [x] Filled the UI gaps flagged in UI_UX_SPEC §6 that didn't need a new
+      reference design: System Info and Settings screens (first-pass),
+      Tests tab (resolved as a fuller test menu). Module-selection screen
+      and empty/error states beyond the basics are still open — see
+      Phase 3.
 
 **Exit criteria:** every "TBD"/"open item" in the docs above has an owner
-and an answer, or an explicit "defer to Phase N" note.
+and an answer, or an explicit "defer to Phase N" note. Only the driver
+topology and module-selection/empty-state UI gaps remain open.
 
 ---
 
@@ -74,39 +82,57 @@ confirmed accurate against a reference meter.
 **Goal:** extend the existing, working safety architecture to the new
 channels without weakening it.
 
+**Status: the general BLE/orchestration/reporting plumbing landed ahead of
+schedule (independent of driver hardware); the injector/coil-specific
+pieces are still blocked on Phase 1 hardware.**
+
+- [x] ESP32: BLE peripheral added, GATT service from
+      [API_PROTOCOL_SPEC.md](API_PROTOCOL_SPEC.md) §1 implemented in
+      `ble_service.ino`, gated by the Option A PIN auth from Phase 0
+      (link-layer encryption still deferred — see Phase 4).
+- [x] ESP32: test-orchestration layer (`test_orchestrator.ino`) validates
+      module-profile-driven commands and runs what's measurable today
+      (`resistance`, `short_to_ground`, `current_monitor`); `position_sweep`
+      and `actuator_movement` correctly return `NOT_IMPLEMENTED` pending
+      Phase 1 hardware rather than being faked.
+- [x] ESP32: `/REPORTS/<module>.jsonl` + `/LOGS/tests.log` writer
+      implemented, producing a result record on every test run.
+- [x] CAN driver (`can_mcp2515.ino`, register-level MCP2515) and K-Line
+      driver (`kline_iso14230.ino`, ISO 14230 fast-init) implemented —
+      **not yet hardware-validated against a real bus/ECU** (this work was
+      originally deferred to Phase 5; it landed early but still needs the
+      bench validation described there).
+- [x] Coexistence: Wi-Fi AP + WebServer + SD + BLE + CAN + K-Line run
+      concurrently on target ESP32 hardware — required switching to the
+      `huge_app` partition scheme after CI caught a "text section exceeds
+      available space" build failure (see
+      [PROJECT_STATUS.md](PROJECT_STATUS.md) "Confirmed resource-pressure
+      finding").
+- [x] `README.md`/`PROJECT_STATUS.md` updated to reflect BLE + CAN/K-Line +
+      orchestrator + mobile app landing.
 - [ ] Nano: add `INJ_TEST`/`COIL_TEST`/`TEST_STOP` command handling per
       [API_PROTOCOL_SPEC.md](API_PROTOCOL_SPEC.md) §4.3, with hard-coded
       max pulse-width/dwell/duty-cycle caps enforced independent of any
-      input.
+      input. Still blocked on Phase 1 driver hardware — today
+      `RUN_INJECTOR_TEST`/`RUN_COIL_TEST`/`RUN_ALL_INJECTORS` exist at the
+      BLE layer but honestly report `NOT_IMPLEMENTED`.
 - [ ] Nano: extend `safetyOK()`-style supervision to run continuously
       during a test, not just before it starts (mirrors existing relay
       re-check-after-energize pattern in `relayOnSafe()`).
 - [ ] Nano: extend status reporting with `TEST_STATUS` lines.
-- [ ] ESP32: add BLE peripheral (NimBLE), implement the GATT service from
-      [API_PROTOCOL_SPEC.md](API_PROTOCOL_SPEC.md) §1, gated by the chosen
-      auth approach (§3).
-- [ ] ESP32: add test-orchestration layer that validates app commands
-      against the selected module profile's limits before forwarding to
-      Nano.
-- [ ] ESP32: add `/REPORTS` writer producing the result-record schema
-      (SRS §6.2) on test completion.
 - [ ] ESP32: extend module `.INI` schema support for `[TEST_INJECTOR]`/
       `[TEST_COIL]` sections (SRS §6.1); update
       `HILUX_1KD_TURBO.INI` and add at least a couple more example
       profiles.
-- [ ] Coexistence testing: confirm Wi-Fi AP + WebServer + SD + NimBLE run
-      concurrently without memory exhaustion/instability on target ESP32
-      hardware; fall back per Phase 0 decision if not.
-- [ ] Update `README.md`/`PROJECT_STATUS.md` once this phase lands (they
-      currently describe pre-BLE, pre-driver-stage firmware).
 
-**Exit criteria:** a BLE client (even a generic BLE test app, pre-mobile-
-app) can pair with a PIN, request an injector pulse test, and receive
-status/result notifications, with the Nano safety layer still the sole
-authority over the driver outputs.
+**Exit criteria:** a BLE client can pair with a PIN, request an injector
+pulse test, and receive status/result notifications, with the Nano safety
+layer still the sole authority over the driver outputs. Currently true for
+the pairing/status/reporting path; the injector/coil pulse itself still
+depends on Phase 1 hardware.
 
 **Depends on:** Phase 1 (hardware to drive), Phase 0 (protocol/auth
-decisions).
+decisions — resolved).
 
 ---
 
@@ -197,12 +223,14 @@ environment.
 - [ ] Power input protection (reverse polarity, transient suppression) —
       not called out in current Nano firmware beyond ADC monitoring.
 - [ ] Expand module profile library beyond the 5-family v1 target (PRD §8).
-- [ ] Revisit CAN/K-Line driver work (explicitly out of scope through
-      Phase 4) once the core injector/coil product is validated — this is
-      where `[COMMUNICATION]`/`[SERVICE]` sections of the module schema
-      finally get consumed, under the same "validate before implementing
-      OEM routines" caution already stated in the existing firmware
-      headers.
+- [ ] Bench-validate the CAN (`can_mcp2515.ino`) and K-Line
+      (`kline_iso14230.ino`) drivers against a real MCP2515 board / real
+      K-Line ECU — implemented in Phase 2 ahead of schedule but never run
+      against real hardware; this is where `[COMMUNICATION]`/`[SERVICE]`
+      sections of the module schema finally get consumed, under the same
+      "validate before implementing OEM routines" caution already stated
+      in the existing firmware headers.
+- [ ] Add RTC for real wall-clock report timestamps (currently `uptime_ms`).
 
 **Depends on:** Phase 4.
 
@@ -226,5 +254,5 @@ Phase 0 (decisions/docs)
 | ESP32 resource exhaustion running Wi-Fi+BLE+SD+Web concurrently | Medium — forces architecture rework | 2 | Early coexistence test, Wi-Fi-on-demand fallback ready |
 | BLE PIN auth weaker than intended | Medium — security | 2/4 | Explicit Option A/B decision + link encryption + rate limiting |
 | Module `.INI` schema drifts between firmware and app | Medium — silent bugs | 2/3 | Single schema doc (SRS §6.1), both sides implement against it |
-| No reference design for 4 of the UI screens | Low/Medium — rework risk | 3 | Close UI_UX_SPEC §6 gaps in Phase 0 before building those screens |
-| No version control on the repo today | Low but compounding | 0 | Initialize git immediately |
+| No reference design for 4 of the UI screens | Low/Medium — rework risk | 3 | Close UI_UX_SPEC §6 gaps in Phase 0 before building those screens (System Info/Settings/Tests tab done; module-selection screen + empty/error states still open) |
+| CAN/K-Line drivers implemented but never run against real hardware | Medium — could be wrong (bit-timing, framing) once tested | 5 | Bench-validate against a real MCP2515 board and K-Line ECU before any vehicle use |
