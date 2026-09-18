@@ -155,7 +155,7 @@ class TiffBleService {
   }
 
   /// Reads the module list characteristic and parses the firmware's
-  /// "MODULES\n<file1>\n<file2>..." text (see `moduleListText()` in
+  /// `MODULES\nfile1\nfile2...` text (see `moduleListText()` in
   /// TIFF_TESTER_PRO_SD_ESP32.ino) into module ids — the `.INI` filename
   /// stem, matching what `SELECT_MODULE:<id>` expects.
   Future<List<String>> readModuleList() async {

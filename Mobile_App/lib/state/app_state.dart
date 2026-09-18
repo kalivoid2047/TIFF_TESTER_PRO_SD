@@ -23,6 +23,13 @@ class AppState extends ChangeNotifier {
   BluetoothDevice? connectedDevice;
   String? connectError;
 
+  /// True if the currently-connected device was authenticated with the
+  /// still-shipped default PIN (`defaultPin` below) — a nudge to change it
+  /// before field use (Documentation/ROADMAP.md Phase 4 "default-PIN
+  /// warning"; mirrors the firmware's own `ble_pin_is_default` flag on the
+  /// Wi-Fi debug API, which the BLE-only app has no way to read directly).
+  bool usingDefaultPin = false;
+
   NanoStatus nanoStatus = const NanoStatus.unknown();
   final List<TestResult> results = [];
 
@@ -60,6 +67,7 @@ class AppState extends ChangeNotifier {
         connectedDevice = null;
         nanoStatus = const NanoStatus.unknown();
         activeModuleId = null;
+        usingDefaultPin = false;
         notifyListeners();
       }
     });
@@ -78,6 +86,7 @@ class AppState extends ChangeNotifier {
       await ble.authenticate(pin);
       connectedDevice = device;
       connectionState = AppConnectionState.connected;
+      usingDefaultPin = pin == defaultPin;
       await _rememberLastDevice(device.remoteId.str);
     } catch (e) {
       connectError = e.toString();
@@ -135,7 +144,11 @@ class AppState extends ChangeNotifier {
 
   Future<void> stopTest() => ble.sendCommand('STOP_TEST');
 
-  Future<void> setPin(String newPin) => ble.sendCommand('SET_PIN:$newPin');
+  Future<void> setPin(String newPin) async {
+    await ble.sendCommand('SET_PIN:$newPin');
+    usingDefaultPin = newPin == defaultPin;
+    notifyListeners();
+  }
 
   Future<void> forgetLastDevice() async {
     final prefs = await SharedPreferences.getInstance();

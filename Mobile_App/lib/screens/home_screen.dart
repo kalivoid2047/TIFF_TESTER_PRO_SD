@@ -9,6 +9,7 @@ import 'coil_test_screen.dart';
 import 'injector_test_screen.dart';
 import 'module_selection_screen.dart';
 import 'scan_screen.dart';
+import 'settings_screen.dart';
 import 'system_info_screen.dart';
 
 /// Documentation/UI_UX_SPEC.md §4.2 (disconnected) / §4.5 (connected) —
@@ -49,6 +50,36 @@ class HomeScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (connected && app.usingDefaultPin)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Material(
+                color: AppColors.danger.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const SettingsScreen())),
+                  child: const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning_amber_rounded,
+                            color: AppColors.danger),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Still using the default PIN — tap to change it '
+                            'before field use.',
+                            style: TextStyle(color: AppColors.danger),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           AppCard(
             title: 'Connection',
             child: Column(

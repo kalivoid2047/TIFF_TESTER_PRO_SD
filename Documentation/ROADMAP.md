@@ -29,20 +29,22 @@ placeholders to be reforecast once a team size is known.
       (see Phase 4).
 - [x] Android minimum SDK: 26, implemented in the Flutter app.
 - [x] PDF library choice: `pdf`/`printing` packages, implemented.
-- [ ] Remaining open item from SRS §8/PRD §9: Wi-Fi-always-on vs. on-demand
-      alongside BLE — current firmware runs both concurrently (see Phase 2
-      coexistence note); revisit only if resource pressure resurfaces.
+- [x] Wi-Fi-always-on vs. on-demand alongside BLE: decided always-on —
+      the Phase 2 coexistence test confirmed Wi-Fi AP + WebServer + SD +
+      BLE + CAN + K-Line run concurrently (after the `huge_app` partition
+      fix), so there's no resource-pressure reason to add on-demand
+      Wi-Fi toggling. Revisit only if that changes.
 - [ ] Injector/coil driver circuit topology (needs a hardware engineer's
       input, not just firmware) — still open, blocks Phase 1.
 - [x] Filled the UI gaps flagged in UI_UX_SPEC §6 that didn't need a new
-      reference design: System Info and Settings screens (first-pass),
-      Tests tab (resolved as a fuller test menu). Module-selection screen
-      and empty/error states beyond the basics are still open — see
-      Phase 3.
+      reference design: System Info, Settings, and module-selection
+      screens (first-pass), Tests tab (resolved as a fuller test menu).
+      Empty/error states beyond the basics are still open — see Phase 3.
 
 **Exit criteria:** every "TBD"/"open item" in the docs above has an owner
 and an answer, or an explicit "defer to Phase N" note. Only the driver
-topology and module-selection/empty-state UI gaps remain open.
+topology (needs a hardware engineer, not firmware/app work) and
+empty-state UI polish remain open.
 
 ---
 
@@ -110,12 +112,6 @@ pieces are still blocked on Phase 1 hardware.**
       finding").
 - [x] `README.md`/`PROJECT_STATUS.md` updated to reflect BLE + CAN/K-Line +
       orchestrator + mobile app landing.
-- [ ] Nano: add `INJ_TEST`/`COIL_TEST`/`TEST_STOP` command handling per
-      [API_PROTOCOL_SPEC.md](API_PROTOCOL_SPEC.md) §4.3, with hard-coded
-      max pulse-width/dwell/duty-cycle caps enforced independent of any
-      input. Still blocked on Phase 1 driver hardware — today
-      `RUN_INJECTOR_TEST`/`RUN_COIL_TEST`/`RUN_ALL_INJECTORS` exist at the
-      BLE layer but honestly report `NOT_IMPLEMENTED`.
 - [x] Nano: `INJ_TEST`/`COIL_TEST`/`TEST_STOP` command handling added
       (`startTestWindow()`/`stopTestWindow()`), with the requested
       pulse-width/dwell rejected outright (not silently clamped) against a
@@ -194,6 +190,12 @@ yet run against real hardware.**
       shared with the existing `/api/modules` web handler) and calls
       `selectModule()`. Reachable from a new "Module" card on the Home
       screen.
+- [x] Default-PIN warning banner on the Home screen (`usingDefaultPin` in
+      `AppState`, set when the PIN used to authenticate equals
+      `AppState.defaultPin`) — tapping it opens Settings to change the
+      PIN. Mirrors the firmware's existing `ble_pin_is_default` flag on
+      the Wi-Fi debug API (`handleConfigStatus()` in `config.ino`), which
+      the BLE-only app path had no equivalent for.
 
 **Exit criteria (not yet met):** a technician can complete the full flow —
 scan, pair, run one injector test and one coil test, view results, save a
@@ -222,8 +224,13 @@ before calling this a usable bench product.
       are meaningful (not just "code runs").
 - [ ] Confirm report data written to SD and the app's PDF agree, for the
       same test session.
-- [ ] Security pass on BLE auth (rate-limiting, default-PIN warning,
-      link-encryption decision from Phase 0/API spec §3).
+- [ ] Security pass on BLE auth (link-encryption decision from Phase
+      0/API spec §3 still open). Rate-limiting (`blePinFailCount`/
+      `blePinLockoutUntil` backoff in `ble_service.ino`) and a default-PIN
+      warning (firmware-side in `config.ino`'s boot/`/api/config` log +
+      status, app-side via the Phase 3 Home screen banner above) already
+      exist — this item is now scoped to the link-encryption/bonding
+      decision and any follow-on hardening it implies.
 - [ ] Update all module `.INI` profiles and this documentation set to match
       whatever changed during implementation (docs are a living set, not a
       one-time deliverable).
