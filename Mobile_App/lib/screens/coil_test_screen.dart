@@ -37,6 +37,11 @@ class _CoilTestScreenState extends State<CoilTestScreen> {
 
   Future<void> _startTest() async {
     final app = context.read<AppState>();
+    if (!app.isConnected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Connect to a device first')));
+      return;
+    }
 
     setState(() {
       _testing = true;
@@ -60,16 +65,29 @@ class _CoilTestScreenState extends State<CoilTestScreen> {
       setState(() => _elapsedS++);
     });
 
-    await app.runCoilTest(
-      channel: _selectedCoil,
-      dwellMs: _dwellMs,
-      durationS: _durationS,
-    );
+    try {
+      await app.runCoilTest(
+        channel: _selectedCoil,
+        dwellMs: _dwellMs,
+        durationS: _durationS,
+      );
+    } catch (_) {
+      _elapsedTimer?.cancel();
+      if (!mounted) return;
+      setState(() => _testing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to start test: device disconnected')));
+    }
   }
 
   Future<void> _stopTest() async {
-    await context.read<AppState>().stopTest();
+    try {
+      await context.read<AppState>().stopTest();
+    } catch (_) {
+      // Device already disconnected; fall through to local cleanup.
+    }
     _elapsedTimer?.cancel();
+    if (!mounted) return;
     setState(() => _testing = false);
   }
 

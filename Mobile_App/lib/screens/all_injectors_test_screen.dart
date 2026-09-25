@@ -40,6 +40,12 @@ class _AllInjectorsTestScreenState extends State<AllInjectorsTestScreen> {
 
   Future<void> _start() async {
     final app = context.read<AppState>();
+    if (!app.isConnected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Connect to a device first')));
+      return;
+    }
+
     setState(() {
       _testing = true;
       _progress = 0;
@@ -56,14 +62,29 @@ class _AllInjectorsTestScreenState extends State<AllInjectorsTestScreen> {
       });
     });
 
-    await app.runAllInjectors(
-      pulseWidthMs: _pulseWidthMs,
-      durationPerS: _durationPerS,
-    );
+    try {
+      await app.runAllInjectors(
+        pulseWidthMs: _pulseWidthMs,
+        durationPerS: _durationPerS,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _testing = false;
+        _status = 'IDLE';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to start test: device disconnected')));
+    }
   }
 
   Future<void> _stop() async {
-    await context.read<AppState>().stopTest();
+    try {
+      await context.read<AppState>().stopTest();
+    } catch (_) {
+      // Device already disconnected; fall through to local cleanup.
+    }
+    if (!mounted) return;
     setState(() {
       _testing = false;
       _status = 'IDLE';
