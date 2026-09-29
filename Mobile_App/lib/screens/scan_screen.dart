@@ -9,6 +9,7 @@ import '../ble/tiff_ble_service.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import 'connect_screen.dart';
+import 'root_shell.dart';
 
 /// Documentation/UI_UX_SPEC.md §4.3.
 class ScanScreen extends StatefulWidget {
@@ -20,13 +21,55 @@ class ScanScreen extends StatefulWidget {
 
 class _ScanScreenState extends State<ScanScreen> {
   bool _scanning = false;
+  bool _showUnnamed = false;
   List<ScanResult> _results = [];
+  // Paired Bluetooth Classic boards (V2 firmware, e.g. TIFF_TESTER_V2).
+  List<({String name, String address})> _classic = [];
+  String? _classicError;
+  bool _connectingClassic = false;
   StreamSubscription<List<ScanResult>>? _sub;
 
   @override
   void initState() {
     super.initState();
     _startScan();
+  }
+
+  Future<void> _loadClassic() async {
+    try {
+      final paired = await context.read<AppState>().ble.classic.pairedDevices();
+      if (!mounted) return;
+      setState(() {
+        _classic = [
+          for (final d in paired)
+            if (d.name.toUpperCase().contains('TIFF'))
+              (name: d.name, address: d.address)
+        ];
+      });
+    } catch (e) {
+      if (mounted) setState(() => _classicError = e.toString());
+    }
+  }
+
+  Future<void> _connectClassic(({String name, String address}) d) async {
+    setState(() {
+      _connectingClassic = true;
+      _classicError = null;
+    });
+    final app = context.read<AppState>();
+    try {
+      await app.ble.stopScan();
+      await app.connectClassic(d.address, d.name);
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const RootShell()),
+        (route) => false,
+      );
+    } catch (e) {
+      if (mounted) setState(() => _classicError = 'Could not connect: $e');
+    } finally {
+      if (mounted) setState(() => _connectingClassic = false);
+    }
   }
 
   Future<void> _startScan() async {
@@ -39,6 +82,7 @@ class _ScanScreenState extends State<ScanScreen> {
       return;
     }
     if (!mounted) return;
+    _loadClassic();
 
     final app = context.read<AppState>();
     _sub?.cancel();
@@ -83,8 +127,23 @@ class _ScanScreenState extends State<ScanScreen> {
     super.dispose();
   }
 
+  // platformName is frequently empty during an Android scan; the advertised
+  // name lives in advertisementData.
+  String _nameOf(ScanResult r) => r.advertisementData.advName.isNotEmpty
+      ? r.advertisementData.advName
+      : r.device.platformName;
+
+  bool _isTiff(ScanResult r) =>
+      _nameOf(r).startsWith(kTiffDeviceNamePrefix) ||
+      r.advertisementData.serviceUuids.contains(TiffBleUuids.service);
+
   @override
   Widget build(BuildContext context) {
+    final visible = _showUnnamed
+        ? _results
+        : _results
+            .where((r) => _nameOf(r).isNotEmpty || _isTiff(r))
+            .toList();
     return Scaffold(
       appBar: AppBar(title: const Text('SCAN DEVICES')),
       body: Column(
@@ -107,24 +166,59 @@ class _ScanScreenState extends State<ScanScreen> {
                 ],
               ),
             ),
+          if (_classic.isNotEmpty || _classicError != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('PAIRED (BLUETOOTH CLASSIC)',
+                      style: TextStyle(
+                          color: AppColors.textSecondary, fontSize: 12)),
+                  for (final d in _classic)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.bluetooth,
+                          color: AppColors.success),
+                      title: Text(d.name,
+                          style:
+                              const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text(d.address,
+                          style: const TextStyle(
+                              color: AppColors.textSecondary)),
+                      trailing: _connectingClassic
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.chevron_right),
+                      onTap:
+                          _connectingClassic ? null : () => _connectClassic(d),
+                    ),
+                  if (_classicError != null)
+                    Text(_classicError!,
+                        style: const TextStyle(color: AppColors.danger)),
+                ],
+              ),
+            ),
+          SwitchListTile(
+            dense: true,
+            title: const Text('Show unnamed devices'),
+            value: _showUnnamed,
+            onChanged: (v) => setState(() => _showUnnamed = v),
+          ),
           Expanded(
-            child: _results.isEmpty
+            child: visible.isEmpty
                 ? const Center(
                     child: Text('No devices found yet.',
                         style: TextStyle(color: AppColors.textSecondary)))
                 : ListView.builder(
-                    itemCount: _results.length,
+                    itemCount: visible.length,
                     itemBuilder: (context, i) {
-                      final r = _results[i];
-                      // platformName is frequently empty during an Android
-                      // scan; the advertised name lives in advertisementData.
-                      final name = r.advertisementData.advName.isNotEmpty
-                          ? r.advertisementData.advName
-                          : r.device.platformName;
-                      final isTiff =
-                          name.startsWith(kTiffDeviceNamePrefix) ||
-                              r.advertisementData.serviceUuids
-                                  .contains(TiffBleUuids.service);
+                      final r = visible[i];
+                      final name = _nameOf(r);
+                      final isTiff = _isTiff(r);
                       return ListTile(
                         title: Text(
                           name.isNotEmpty

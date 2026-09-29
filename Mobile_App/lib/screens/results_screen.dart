@@ -35,7 +35,7 @@ class ResultsScreen extends StatelessWidget {
   Future<void> _savePdf(BuildContext context, AppState app) async {
     final doc = await buildReportPdf(
       results: app.results,
-      deviceName: app.connectedDevice?.platformName,
+      deviceName: app.connectedName,
     );
     await Printing.sharePdf(
       bytes: await doc.save(),

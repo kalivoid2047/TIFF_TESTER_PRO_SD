@@ -6,11 +6,14 @@ import '../theme/app_theme.dart';
 import '../widgets/app_card.dart';
 import 'all_injectors_test_screen.dart';
 import 'coil_test_screen.dart';
+import 'controls_screen.dart';
 import 'injector_test_screen.dart';
+import 'module_database_screen.dart';
 import 'module_selection_screen.dart';
 import 'scan_screen.dart';
 import 'settings_screen.dart';
 import 'system_info_screen.dart';
+import 'vehicle_list_screen.dart';
 
 /// Documentation/UI_UX_SPEC.md §4.2 (disconnected) / §4.5 (connected) —
 /// same screen, state-driven.
@@ -92,9 +95,9 @@ class HomeScreen extends StatelessWidget {
                 ),
                 StatusRow(
                   label: 'Device',
-                  value: app.connectedDevice?.platformName.isNotEmpty == true
-                      ? app.connectedDevice!.platformName
-                      : (connected ? app.connectedDevice!.remoteId.str : 'Not Connected'),
+                  value: app.connectedName?.isNotEmpty == true
+                      ? app.connectedName!
+                      : (connected ? (app.connectedId ?? '') : 'Not Connected'),
                 ),
                 const SizedBox(height: 12),
                 ElevatedButton(
@@ -133,23 +136,74 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           AppCard(
-            title: 'ECU Control',
+            title: 'Vehicle & Module Database',
             child: Row(
               children: [
                 Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.success),
-                    onPressed: connected ? () => app.powerOn() : null,
-                    child: const Text('ECU ON'),
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const VehicleListScreen())),
+                    child: const Text('VEHICLES'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: connected ? () => app.powerOff() : null,
-                    child: const Text('ECU OFF'),
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const ModuleDatabaseScreen())),
+                    child: const Text('MODULES'),
                   ),
+                ),
+              ],
+            ),
+          ),
+          AppCard(
+            title: 'DUT Relay',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.success),
+                        onPressed: connected ? () => app.powerOn() : null,
+                        child: const Text('DUT ON'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: connected ? () => app.powerOff() : null,
+                        child: const Text('DUT OFF'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (_) => const ControlsScreen())),
+                        child: const Text('FULL CONTROLS'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.danger),
+                        onPressed: () => _allOutputsOff(context, app),
+                        child: const Text('ALL OUTPUTS OFF'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -206,6 +260,24 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _allOutputsOff(BuildContext context, AppState app) async {
+    if (!app.isConnected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Connect to a device first')));
+      return;
+    }
+    try {
+      await app.allOutputsOff();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('All outputs off')));
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to reach device')));
+    }
   }
 }
 

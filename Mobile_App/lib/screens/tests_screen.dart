@@ -24,10 +24,17 @@ class TestsScreen extends StatelessWidget {
           .showSnackBar(const SnackBar(content: Text('Connect to a device first')));
       return;
     }
-    await app.runQuickTest(test);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$test requested — see Results tab.')));
+    try {
+      await app.runQuickTest(test);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('$test requested — see Results tab.')));
+      }
+    } on StateError catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
     }
   }
 

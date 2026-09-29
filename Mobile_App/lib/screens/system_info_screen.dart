@@ -38,12 +38,12 @@ class SystemInfoScreen extends StatelessWidget {
                 StatusRow(
                   label: 'Device',
                   value: app.isConnected
-                      ? (app.connectedDevice?.platformName ?? 'Unknown')
+                      ? (app.connectedName ?? 'Unknown')
                       : 'Not connected',
                 ),
                 StatusRow(
                   label: 'Address',
-                  value: app.connectedDevice?.remoteId.str ?? '—',
+                  value: app.connectedId ?? '—',
                 ),
               ],
             ),

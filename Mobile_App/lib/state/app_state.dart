@@ -6,8 +6,10 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../ble/tiff_ble_service.dart';
+import '../models/module_profile.dart';
 import '../models/nano_status.dart';
 import '../models/test_result.dart';
+import '../models/vehicle.dart';
 
 enum AppConnectionState { disconnected, connecting, connected }
 
@@ -21,6 +23,11 @@ class AppState extends ChangeNotifier {
 
   AppConnectionState connectionState = AppConnectionState.disconnected;
   BluetoothDevice? connectedDevice;
+
+  /// Display name/id of the connected device, for both BLE and the V2
+  /// Bluetooth Classic link (where `connectedDevice` is null).
+  String? connectedName;
+  String? connectedId;
   String? connectError;
 
   /// True if the currently-connected device was authenticated with the
@@ -32,6 +39,14 @@ class AppState extends ChangeNotifier {
 
   NanoStatus nanoStatus = const NanoStatus.unknown();
   final List<TestResult> results = [];
+
+  /// Local vehicle/module databases (Documentation/PRD.md §11, vision brief
+  /// §13–§16). Purely offline metadata the technician maintains on the
+  /// phone — independent of the BLE connection and the SD-card module list
+  /// (`fetchModuleList()`/`selectModule()` below), which come from the
+  /// firmware instead.
+  final List<Vehicle> vehicles = [];
+  final List<ModuleProfile> moduleProfiles = [];
 
   /// The `.INI` filename stem of the module selected via `selectModule()`
   /// this session — null until one is picked (see Module Selection screen,
@@ -65,6 +80,8 @@ class AppState extends ChangeNotifier {
       if (state == BluetoothConnectionState.disconnected) {
         connectionState = AppConnectionState.disconnected;
         connectedDevice = null;
+        connectedName = null;
+        connectedId = null;
         nanoStatus = const NanoStatus.unknown();
         activeModuleId = null;
         usingDefaultPin = false;
@@ -73,6 +90,8 @@ class AppState extends ChangeNotifier {
     });
 
     _restoreResults();
+    _restoreVehicles();
+    _restoreModuleProfiles();
   }
 
   Future<void> connectAndAuthenticate(
@@ -85,9 +104,33 @@ class AppState extends ChangeNotifier {
       await ble.connect(device);
       await ble.authenticate(pin);
       connectedDevice = device;
+      connectedName = device.platformName;
+      connectedId = device.remoteId.str;
       connectionState = AppConnectionState.connected;
       usingDefaultPin = pin == defaultPin;
       await _rememberLastDevice(device.remoteId.str);
+    } catch (e) {
+      connectError = e.toString();
+      connectionState = AppConnectionState.disconnected;
+      rethrow;
+    } finally {
+      notifyListeners();
+    }
+  }
+
+  /// Connects to a paired V2 (Bluetooth Classic) board — no PIN.
+  Future<void> connectClassic(String address, String name) async {
+    connectionState = AppConnectionState.connecting;
+    connectError = null;
+    notifyListeners();
+
+    try {
+      await ble.connectClassic(address, name);
+      connectedDevice = null;
+      connectedName = name;
+      connectedId = address;
+      connectionState = AppConnectionState.connected;
+      usingDefaultPin = false;
     } catch (e) {
       connectError = e.toString();
       connectionState = AppConnectionState.disconnected;
@@ -101,6 +144,8 @@ class AppState extends ChangeNotifier {
     await ble.disconnect();
     connectionState = AppConnectionState.disconnected;
     connectedDevice = null;
+    connectedName = null;
+    connectedId = null;
     notifyListeners();
   }
 
@@ -144,6 +189,18 @@ class AppState extends ChangeNotifier {
 
   Future<void> stopTest() => ble.sendCommand('STOP_TEST');
 
+  /// Emergency "ALL OUTPUTS OFF" (vision brief §18, §37) — deliberately
+  /// distinct from a normal `powerOff()`: sends both `POWER_OFF` (drops the
+  /// DUT relay) and `STOP_TEST` (aborts any in-flight channel test), the
+  /// two commands `ble_service.ino` always allows regardless of PIN auth
+  /// state (safety-favorable). Only the DUT relay physically exists today
+  /// (Documentation/ROADMAP.md Phase 1 — no auxiliary relay/MOSFET driver
+  /// hardware yet), so this is everything that actually can be turned off.
+  Future<void> allOutputsOff() async {
+    await ble.sendCommand('POWER_OFF');
+    await ble.sendCommand('STOP_TEST');
+  }
+
   Future<void> setPin(String newPin) async {
     await ble.sendCommand('SET_PIN:$newPin');
     usingDefaultPin = newPin == defaultPin;
@@ -159,6 +216,150 @@ class AppState extends ChangeNotifier {
     results.clear();
     notifyListeners();
     _persistResults();
+  }
+
+  // --- Vehicle database (PRD.md §11 / vision brief §15) ---------------
+
+  String _newId() => DateTime.now().microsecondsSinceEpoch.toString();
+
+  void addVehicle(Vehicle vehicle) {
+    vehicles.add(vehicle);
+    notifyListeners();
+    _persistVehicles();
+  }
+
+  void updateVehicle(Vehicle vehicle) {
+    final i = vehicles.indexWhere((v) => v.id == vehicle.id);
+    if (i == -1) return;
+    vehicles[i] = vehicle;
+    notifyListeners();
+    _persistVehicles();
+  }
+
+  void deleteVehicle(String id) {
+    vehicles.removeWhere((v) => v.id == id);
+    notifyListeners();
+    _persistVehicles();
+  }
+
+  Vehicle duplicateVehicle(Vehicle vehicle) {
+    final copy = vehicle.copyWith(model: '${vehicle.model} (copy)');
+    final withNewId = Vehicle(
+      id: _newId(),
+      manufacturer: copy.manufacturer,
+      model: copy.model,
+      year: copy.year,
+      engine: copy.engine,
+      fuelType: copy.fuelType,
+      engineCode: copy.engineCode,
+      ecuInfo: copy.ecuInfo,
+      protocol: copy.protocol,
+      notes: copy.notes,
+    );
+    addVehicle(withNewId);
+    return withNewId;
+  }
+
+  Future<void> _persistVehicles() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'stored_vehicles',
+      jsonEncode(vehicles.map((v) => v.toJson()).toList()),
+    );
+  }
+
+  Future<void> _restoreVehicles() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('stored_vehicles');
+    if (raw == null) return;
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      vehicles
+        ..clear()
+        ..addAll(
+            decoded.map((e) => Vehicle.fromJson(e as Map<String, dynamic>)));
+      notifyListeners();
+    } catch (_) {
+      // Corrupt/old-format blob — start fresh rather than crashing on launch.
+    }
+  }
+
+  // --- Module database (PRD.md §11 / vision brief §13–§14) ------------
+
+  void addModuleProfile(ModuleProfile module) {
+    moduleProfiles.add(module);
+    notifyListeners();
+    _persistModuleProfiles();
+  }
+
+  void updateModuleProfile(ModuleProfile module) {
+    final i = moduleProfiles.indexWhere((m) => m.id == module.id);
+    if (i == -1) return;
+    moduleProfiles[i] = module;
+    notifyListeners();
+    _persistModuleProfiles();
+  }
+
+  void deleteModuleProfile(String id) {
+    moduleProfiles.removeWhere((m) => m.id == id);
+    notifyListeners();
+    _persistModuleProfiles();
+  }
+
+  ModuleProfile duplicateModuleProfile(ModuleProfile module) {
+    final copy = module.copyWith(name: '${module.name} (copy)');
+    final withNewId = ModuleProfile(
+      id: _newId(),
+      name: copy.name,
+      vehicleId: copy.vehicleId,
+      moduleType: copy.moduleType,
+      communicationProtocol: copy.communicationProtocol,
+      canSpeed: copy.canSpeed,
+      canTxId: copy.canTxId,
+      canRxId: copy.canRxId,
+      klineBaud: copy.klineBaud,
+      minVoltage: copy.minVoltage,
+      maxVoltage: copy.maxVoltage,
+      maxCurrent: copy.maxCurrent,
+      positionMin: copy.positionMin,
+      positionMax: copy.positionMax,
+      tempMin: copy.tempMin,
+      tempMax: copy.tempMax,
+      relayRequirements: copy.relayRequirements,
+      mosfetRequirements: copy.mosfetRequirements,
+      testProcedure: copy.testProcedure,
+      diagnosticCommands: copy.diagnosticCommands,
+      passCriteria: copy.passCriteria,
+      failCriteria: copy.failCriteria,
+      notes: copy.notes,
+      sdModuleId: copy.sdModuleId,
+    );
+    addModuleProfile(withNewId);
+    return withNewId;
+  }
+
+  Future<void> _persistModuleProfiles() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'stored_module_profiles',
+      jsonEncode(moduleProfiles.map((m) => m.toJson()).toList()),
+    );
+  }
+
+  Future<void> _restoreModuleProfiles() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('stored_module_profiles');
+    if (raw == null) return;
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      moduleProfiles
+        ..clear()
+        ..addAll(decoded
+            .map((e) => ModuleProfile.fromJson(e as Map<String, dynamic>)));
+      notifyListeners();
+    } catch (_) {
+      // Corrupt/old-format blob — start fresh rather than crashing on launch.
+    }
   }
 
   Future<void> _rememberLastDevice(String remoteId) async {

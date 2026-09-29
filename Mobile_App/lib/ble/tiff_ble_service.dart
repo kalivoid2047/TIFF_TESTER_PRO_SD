@@ -5,6 +5,7 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 import '../models/nano_status.dart';
 import '../models/test_result.dart';
+import 'tiff_classic_link.dart';
 
 /// GATT UUIDs — must match ESP32_Firmware/TIFF_TESTER_PRO_SD_ESP32.ino and
 /// Documentation/API_PROTOCOL_SPEC.md §1.1/1.2 exactly.
@@ -51,6 +52,26 @@ class TiffBleService {
       _connectionController.stream;
 
   BluetoothDevice? get device => _device;
+
+  /// Bluetooth Classic link for the V2 "Bluetooth-only" firmware. When
+  /// connected, `sendCommand`/`readModuleList`/status all route through it.
+  final TiffClassicLink classic = TiffClassicLink();
+  StreamSubscription<NanoStatus>? _classicStatusSub;
+  StreamSubscription<void>? _classicDownSub;
+
+  bool get isClassic => classic.connected;
+  Stream<String> get classicMessages => classic.messageStream;
+
+  Future<void> connectClassic(String address, String name) async {
+    await classic.connect(address, name);
+    _classicStatusSub?.cancel();
+    _classicDownSub?.cancel();
+    _classicStatusSub =
+        classic.statusStream.listen(_statusController.add);
+    _classicDownSub = classic.disconnectedStream.listen((_) {
+      _connectionController.add(BluetoothConnectionState.disconnected);
+    });
+  }
 
   Future<void> startScan({Duration timeout = const Duration(seconds: 12)}) {
     return FlutterBluePlus.startScan(timeout: timeout);
@@ -136,18 +157,44 @@ class TiffBleService {
   /// Documentation/API_PROTOCOL_SPEC.md §3 for why this is intentionally
   /// simple for now.
   Future<void> authenticate(String pin) async {
+    if (isClassic) return; // V2 firmware has no PIN
     final c = _authChar;
     if (c == null) throw StateError('Not connected.');
     await c.write(utf8.encode(pin), withoutResponse: false);
   }
 
   Future<void> sendCommand(String command) async {
+    if (isClassic) return _sendClassic(command);
     final c = _commandChar;
     if (c == null) throw StateError('Not connected.');
     await c.write(utf8.encode(command), withoutResponse: false);
   }
 
+  /// Translates the app's BLE-style commands to the V2 firmware's text
+  /// protocol. Commands the V2 firmware has no equivalent for throw.
+  Future<void> _sendClassic(String command) async {
+    final i = command.indexOf(':');
+    final name = i < 0 ? command : command.substring(0, i);
+    final arg = i < 0 ? '' : command.substring(i + 1);
+    switch (name) {
+      case 'POWER_ON':
+      case 'POWER_OFF':
+      case 'RESET_FAULT':
+        return classic.sendLine(name);
+      case 'STOP_TEST':
+        return classic.sendLine('ALL_OFF');
+      case 'SELECT_MODULE':
+        await classic.sendLine('SELECT_MODULE|$arg');
+        // V2 refuses POWER_ON/pretest until the module is validated.
+        return classic.sendLine('VALIDATE_MODULE|$arg');
+      default:
+        throw StateError(
+            '$name is not supported by the TIFF_TESTER_V2 (Bluetooth Classic) firmware.');
+    }
+  }
+
   Future<String?> readDeviceInfo() async {
+    if (isClassic) return 'TIFF_TESTER_V2 (Bluetooth Classic)';
     final c = _deviceInfoChar;
     if (c == null) return null;
     final bytes = await c.read();
@@ -159,6 +206,14 @@ class TiffBleService {
   /// TIFF_TESTER_PRO_SD_ESP32.ino) into module ids — the `.INI` filename
   /// stem, matching what `SELECT_MODULE:<id>` expects.
   Future<List<String>> readModuleList() async {
+    if (isClassic) {
+      final files = await classic.listModules();
+      return files
+          .map((f) => f.split('/').last.trim())
+          .where((f) => f.toUpperCase().endsWith('.INI'))
+          .map((f) => f.substring(0, f.length - 4))
+          .toList();
+    }
     final c = _modulesChar;
     if (c == null) return const [];
     final bytes = await c.read();
@@ -169,6 +224,10 @@ class TiffBleService {
   }
 
   Future<void> disconnect() async {
+    if (isClassic) {
+      await classic.disconnect();
+      return;
+    }
     await _device?.disconnect();
     _cleanupAfterDisconnect();
   }
@@ -187,6 +246,9 @@ class TiffBleService {
   }
 
   void dispose() {
+    _classicStatusSub?.cancel();
+    _classicDownSub?.cancel();
+    classic.dispose();
     _connectionSub?.cancel();
     _statusSub?.cancel();
     _resultSub?.cancel();
