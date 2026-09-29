@@ -43,7 +43,14 @@ class _ScanScreenState extends State<ScanScreen> {
     final app = context.read<AppState>();
     _sub?.cancel();
     _sub = app.ble.scanResults.listen((results) {
-      setState(() => _results = results);
+      bool isTiff(ScanResult r) =>
+          r.advertisementData.advName.startsWith(kTiffDeviceNamePrefix) ||
+          r.advertisementData.serviceUuids.contains(TiffBleUuids.service);
+      final sorted = [...results]..sort((a, b) {
+          if (isTiff(a) != isTiff(b)) return isTiff(a) ? -1 : 1;
+          return b.rssi.compareTo(a.rssi);
+        });
+      setState(() => _results = sorted);
     });
 
     setState(() => _scanning = true);
@@ -57,7 +64,11 @@ class _ScanScreenState extends State<ScanScreen> {
       Permission.bluetoothConnect,
       Permission.locationWhenInUse,
     ].request();
-    return statuses.values.every((s) => s.isGranted || s.isLimited);
+    // Location is only declared for Android <=11 (manifest maxSdkVersion=30);
+    // on Android 12+ it can never be granted, so only the Bluetooth
+    // permissions gate scanning.
+    bool ok(Permission p) => statuses[p]?.isGranted ?? false;
+    return ok(Permission.bluetoothScan) && ok(Permission.bluetoothConnect);
   }
 
   Future<void> _stopScan() async {
@@ -105,13 +116,20 @@ class _ScanScreenState extends State<ScanScreen> {
                     itemCount: _results.length,
                     itemBuilder: (context, i) {
                       final r = _results[i];
-                      final isTiff = r.device.platformName
-                          .startsWith(kTiffDeviceNamePrefix);
+                      // platformName is frequently empty during an Android
+                      // scan; the advertised name lives in advertisementData.
+                      final name = r.advertisementData.advName.isNotEmpty
+                          ? r.advertisementData.advName
+                          : r.device.platformName;
+                      final isTiff =
+                          name.startsWith(kTiffDeviceNamePrefix) ||
+                              r.advertisementData.serviceUuids
+                                  .contains(TiffBleUuids.service);
                       return ListTile(
                         title: Text(
-                          r.device.platformName.isNotEmpty
-                              ? r.device.platformName
-                              : '(unnamed device)',
+                          name.isNotEmpty
+                              ? name
+                              : (isTiff ? kTiffDeviceNamePrefix : '(unnamed device)'),
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         subtitle: Text(r.device.remoteId.str,

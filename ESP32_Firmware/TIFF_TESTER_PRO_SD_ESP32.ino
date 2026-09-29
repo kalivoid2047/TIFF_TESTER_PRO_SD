@@ -319,10 +319,12 @@ void setupWeb() {
 
 void setup() {
   Serial.begin(115200);
+  Serial.println("BOOT: setup() start");
   pinMode(STATUS_LED, OUTPUT);
   analogReadResolution(12);
 
   NanoSerial.begin(115200, SERIAL_8N1, NANO_RX, NANO_TX);
+  Serial.println("BOOT: Nano UART ready.");
 
   bool sdReady = SD.begin(SD_CS);
   if (!sdReady) {
@@ -336,15 +338,21 @@ void setup() {
   }
 
   canInit(500000, 8000000);  // can_mcp2515.ino - 500 kbps @ 8 MHz osc, verify for your board
+  Serial.println("BOOT: CAN init done.");
   klineInit();                // kline_iso14230.ino
+  Serial.println("BOOT: K-Line init done.");
 
   WiFi.mode(WIFI_AP);
-  WiFi.softAP("TIFF_TESTER", sysConfig.apPassword.c_str());
+  bool apOk = WiFi.softAP("TIFF_TESTER", sysConfig.apPassword.c_str());
+  Serial.println(apOk ? "BOOT: Wi-Fi AP started." : "BOOT: Wi-Fi AP FAILED.");
   Serial.print("AP IP: ");
   Serial.println(WiFi.softAPIP());
 
   setupWeb();
+  Serial.println("BOOT: web server ready.");
+  Serial.println("BOOT: starting BLE...");
   bleInit(); // ble_service.ino
+  Serial.println("BOOT: BLE init done.");
 
   if (sdReady) logLine("/LOGS/system.log", "Boot complete.");
   lastHeartbeat = millis();
