@@ -124,6 +124,35 @@ community-health files (see [README.md](../README.md)).
   (System Info, Settings) and a resolution for the "Tests" tab gap (a
   fuller test menu combining the channel tests with the sensor-based
   quick tests).
+- **Local Vehicle & Module database (PRD.md §11 / ROADMAP.md Phase 6,
+  2026-09-29)**: fully offline CRUD for vehicle and module metadata
+  records, independent of BLE/firmware — `vehicle_list_screen`/
+  `vehicle_form_screen`, `module_database_screen`/`module_form_screen`,
+  reachable from a new Home card. Persisted via `shared_preferences`
+  (`AppState`), same pattern as results persistence. Search, add, edit,
+  duplicate, and delete-with-confirmation all verified on a physical
+  device. Distinct from `module_selection_screen.dart`, which still reads
+  the firmware's actual SD `.INI` list over BLE — the two are linked only
+  by a manually-entered `sdModuleId` field, since there's no BLE command to
+  write a new `.INI` file to the SD card.
+- **Controls screen + relay/MOSFET labeling (PRD.md §11 / ROADMAP.md
+  Phase 6, 2026-09-29)**: new `controls_screen.dart` reachable from Home's
+  "FULL CONTROLS" button. Home's former "ECU Control" card (ambiguous —
+  read as engine-control-unit power) is now explicitly "DUT Relay" with
+  DUT ON/DUT OFF, matching what `POWER_ON`/`POWER_OFF` actually drive (the
+  one physical relay, per `Arduino_Nano_Safety/TIFF_TESTER_PRO_SD_NANO.ino`
+  `RELAY_PIN`). Also added a `RESET FAULT` button (the `AppState.resetFault()`
+  method already existed but had no UI). Auxiliary Relay (RELAY 2–4) and
+  MOSFET (MOSFET 1–2) buttons are shown but disabled with an explanatory
+  snackbar, since no auxiliary relay/MOSFET driver hardware or firmware
+  command exists yet (Roadmap Phase 1) — deliberately not wired to send a
+  command `ble_service.ino` would silently drop. New
+  `AppState.allOutputsOff()` sends both `POWER_OFF` and `STOP_TEST` (the
+  two PIN-auth-exempt commands); a red, icon-marked "ALL OUTPUTS OFF"
+  button appears on both Home and Controls, requires no confirmation
+  dialog (a deliberate exception — everything else destructive in the app
+  does confirm), and is verified to show "Connect to a device first" with
+  no unhandled exceptions when disconnected.
 - BLE via `flutter_blue_plus`: scan, connect, PIN auth, live status
   notifications (~250ms cadence from firmware), command writes, result
   notifications — speaks the exact text-command protocol

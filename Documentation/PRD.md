@@ -1,7 +1,7 @@
 # Product Requirements Document (PRD)
 ## TIFF TESTER PRO — Automotive Injection & Ignition Diagnostic Tester
 
-_Version: 0.1 (Draft) — 2026-08-18_
+_Version: 0.2 (Draft) — 2026-09-29_
 _Status: Planning — establishes target scope for full system build-out_
 
 ---
@@ -19,6 +19,16 @@ the mobile app shown in the supplied screenshots ("TIFF TESTER PRO"). It is
 the parent document for [SRS.md](SRS.md), [ARCHITECTURE.md](ARCHITECTURE.md),
 [UI_UX_SPEC.md](UI_UX_SPEC.md), [API_PROTOCOL_SPEC.md](API_PROTOCOL_SPEC.md),
 and [ROADMAP.md](ROADMAP.md).
+
+A separate, broader source document — "TIFF TESTER PRO app data.doc" (client
+vision brief, 53 sections, not versioned in this repo) — describes a
+full multi-brand vehicle diagnostic platform: CAN/K-Line diagnostics,
+vehicle/module database CRUD, live data graphs, SD-logging UI, a
+communication monitor, access levels, error history, and more. This PRD's
+§7.1–7.3 scope is a deliberately narrowed **Phase 1–3 subset** of that vision
+(the bench injector/coil tester shown in the supplied screenshots). §11
+below reconciles the two: everything in the vision brief not already covered
+by §7.1 is tracked as explicit backlog rather than silently dropped.
 
 ## 2. Background / current state
 
@@ -138,6 +148,11 @@ a paper trail (PDF report) per test session.
 - iOS app.
 - Enclosure/production hardware (industrial design) beyond a functional
   enclosed prototype.
+- Everything listed in §11 (full-system vision items not yet scoped into a
+  phase) — CAN/K-Line status display and control, vehicle/module database
+  CRUD, live data graphs, an SD-logging UI, relay/MOSFET-granular manual
+  control, a diagnostics screen, a raw communication monitor, access levels,
+  and error history.
 
 ## 8. Success metrics
 
@@ -180,7 +195,93 @@ a paper trail (PDF report) per test session.
 - Injector/coil driver hardware selection (part numbers, current ratings).
 - PDF library choice for Android app.
 
-## 11. Related documents
+## 11. Full-system vision alignment (2026-09-29 gap review)
+
+A gap review compared the as-built app ([PROJECT_STATUS.md](PROJECT_STATUS.md))
+against "TIFF TESTER PRO app data.doc" (the 53-section client vision brief
+referenced in §1). Conclusion: **the app does not conform to that brief**,
+by design — it implements a Phase 1–3 subset (§7.1) of a much larger target.
+Nothing here was accidentally dropped; the items below were previously
+implicit in "future features" language and are now tracked explicitly.
+
+### 12.1 In scope and delivered (matches the vision brief)
+- BLE connect/pair flow, live status receiving, PDF report export, offline
+  operation, module-profile-driven test parameters — see §7.1 and
+  [PROJECT_STATUS.md](PROJECT_STATUS.md).
+- One transport difference from the brief: it specifies **Bluetooth
+  Classic**; this product uses **BLE** (decided in
+  [ROADMAP.md](ROADMAP.md) Phase 0) — an intentional, documented deviation,
+  not a gap.
+
+### 12.2 Vision-brief items not yet scoped into any phase (new backlog)
+Tracked in [ROADMAP.md](ROADMAP.md) Phase 6 ("Full multi-brand diagnostic
+platform"). Grouped by area, with the originating brief section in
+parentheses:
+
+- **Vehicle & module database CRUD** — ✅ delivered (2026-09-29): add/edit/
+  delete/search/duplicate for vehicles and modules from within the app,
+  fully offline (see [ROADMAP.md](ROADMAP.md) Phase 6). Export/import and
+  the cascading Manufacturer → Model → Year → Engine → Module *selector
+  inside the test flow* (as opposed to management screens) remain open
+  (brief §13–§16).
+- **CAN / K-Line diagnostics UI** — status display (online/offline, speed,
+  IDs, protocol), plus a Diagnostics screen (READ STATUS / READ FAULTS /
+  CLEAR FAULTS / RESET MODULE) (brief §6, §11, §51). Firmware drivers exist
+  ([PROJECT_STATUS.md](PROJECT_STATUS.md)) but are hardware-unvalidated and
+  have zero app-side UI.
+- **Live data graphs** — real-time voltage/current/power/position/
+  temperature charts with start/stop/clear (brief §10). No charting
+  dependency or screen exists.
+- **SD-logging UI** — dedicated screen: SD status, start/stop logging,
+  view/export/delete log files (brief §6, §20–§21). SD reports are written
+  firmware-side today; nothing surfaces them for browsing in-app.
+- **Relay/MOSFET-granular manual control** — ✅ delivered (2026-09-29): new
+  Controls screen with explicit "DUT Relay" labeling (replacing the
+  previous ambiguous "ECU ON/OFF"), Reset Fault, disabled-with-explanation
+  Auxiliary Relay/MOSFET placeholders pending Phase 1 hardware, and an
+  always-visible, no-confirmation "ALL OUTPUTS OFF" distinct from normal
+  DUT OFF (see [ROADMAP.md](ROADMAP.md) Phase 6; brief §17–§18, §37).
+- **Communication Monitor** — raw TX/RX command log with clear/start/stop
+  (brief §33). Does not exist; would sit alongside the existing BLE
+  command/result streams.
+- **Access levels** — Technician / Advanced-Engineer / Administrator modes
+  gating raw CAN/K-Line/relay/MOSFET access (brief §36). Not implemented;
+  no such distinction exists today.
+- **Error History screen** — persisted fault log (date/time, type,
+  voltage/current, module, action taken), independent of the Results screen
+  (brief §42). Not implemented.
+- **Step-by-step test procedure wizard** — Previous/Next/Start driven by a
+  per-module procedure definition, and module-specific dynamic controls
+  (position %, RPM, PWM %, open/close) instead of the current hardcoded
+  pulse-width/duration sliders (brief §43–§44).
+- **Richer connection-error handling** — reason-specific messaging (device
+  off / Bluetooth disabled / lost / timeout) with Reconnect / Scan Again /
+  Open Bluetooth Settings actions, vs. today's plain DISCONNECTED state
+  (brief §34).
+- **Results history persistence & global search** — Results currently
+  persist across restarts ([ROADMAP.md](ROADMAP.md) Phase 3), but there is
+  no search across vehicles/modules/results/faults/logs (brief §22, §26),
+  and channel-test pass/fail can't yet show expected-vs-actual (brief §23)
+  since it depends on Phase 1 driver hardware.
+- **Technician notes field** — free-text observation per test result,
+  saved with the record (brief §25). Not implemented.
+- **Database backup/restore, module/vehicle export-import** — transfer a
+  module/vehicle database between phones (brief §31). Not implemented.
+- **About screen** and a full 13-item navigation surface (brief §4) — the
+  app currently has a 4-tab shell (Home/Tests/Results/Settings); the brief's
+  Dashboard/Connect/Diagnostics/Module Tester/Controls/Live Data/SD
+  Logging/Modules/Vehicles/Test Results/Reports/Settings/About split is not
+  built.
+- **Delete confirmations / pre-delete backup** for destructive database
+  operations (brief §46) — not applicable yet since there's no in-app
+  database CRUD to protect.
+
+None of the above blocks the current Phase 1–4 goal (a working bench
+injector/coil tester). They become relevant once the product's ambition
+grows beyond that bench tool into the multi-brand platform the vision brief
+describes — see [ROADMAP.md](ROADMAP.md) Phase 6 for sequencing.
+
+## 12. Related documents
 
 - [SRS.md](SRS.md) — detailed functional/non-functional requirements
 - [ARCHITECTURE.md](ARCHITECTURE.md) — system architecture & data flow
@@ -188,3 +289,6 @@ a paper trail (PDF report) per test session.
 - [API_PROTOCOL_SPEC.md](API_PROTOCOL_SPEC.md) — BLE/REST protocol contract
 - [ROADMAP.md](ROADMAP.md) — phased delivery plan
 - [PROJECT_STATUS.md](PROJECT_STATUS.md) — as-built status of current repo
+- "TIFF TESTER PRO app data.doc" — client's full-system vision brief (53
+  sections); not stored in this repo. See §11 for the reconciliation against
+  current scope.
