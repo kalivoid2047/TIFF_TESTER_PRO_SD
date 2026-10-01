@@ -38,13 +38,26 @@ I2C 21/22, SPI 18/19/23, MCP2515 CS 5, SD CS 13, K-Line RX/TX 16/17, supply ADC
 `STATUS` returns one line:
 `VOLTAGE=…,DUT_VOLTAGE=…,CURRENT=…,POWER=…,POSITION=…,TEMP=…,DUT=ON|OFF,FAULT=…,NANO=…,INA219=…,SD=…,CAN=…,KLINE=…,WATCHDOG=OK,MODULE=…,STATUS=TESTING|IDLE`.
 
-## Nano I2C protocol (the V2 Nano sketch is **not in this repo**)
+## Nano I2C protocol and the matching Nano sketch
 
-The ESP32 writes one command byte to address 0x12: `0x01` get status (reads 1
-byte back; `0xFF` = no answer), `0x02` all off, `0x03` heartbeat, `0x10/0x11`
-R1 on/off … `0x16/0x17` R4, `0x20/0x21` M1, `0x22/0x23` M2. A matching Nano
-sketch would have to implement these; the ESP32 faults with `NANO_OFFLINE` if
-it stops answering.
+The Nano side is [`../Arduino_Nano_V2`](../Arduino_Nano_V2/TIFF_TESTER_PRO_V2_NANO.ino),
+written against this sketch's protocol. The ESP32 writes one command byte to
+address 0x12: `0x01` get status (then reads 1 byte back; `0xFF` = no answer),
+`0x02` all off, `0x03` heartbeat, `0x10/0x11` R1 on/off … `0x16/0x17` R4,
+`0x20/0x21` M1, `0x22/0x23` M2. The ESP32 faults with `NANO_OFFLINE` if the Nano
+stops answering.
+
+Nano pins: relays 1-4 on D4/D5/D7/D8 (active-LOW), MOSFETs 1-2 on D9/D10
+(active-HIGH), optional e-stop on D3 (active-LOW, pull-up), status LED D13,
+I2C on A4 (SDA) / A5 (SCL). The status byte returned is: bits 0-3 relays, bits
+4-5 MOSFETs, bit 6 fault (heartbeat lost or e-stop), bit 7 always 0 (so it can
+never equal 0xFF). **The ESP32 sketch only checks "answered / didn't answer"; it
+does not read relay state from this byte**, which is why the app can only show
+last-commanded relay states.
+
+**I2C levels:** ESP32 is 3.3 V, Nano is 5 V. The Nano sketch disables its
+internal pull-ups, but you still need a bidirectional level shifter (BSS138
+type) or pull-ups to 3.3 V, plus common ground.
 
 ## Things to know about this firmware (observations, nothing changed)
 

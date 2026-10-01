@@ -86,6 +86,26 @@ jobs:
           sketch-paths: |
             - /tmp/sketches/TIFF_TESTER_PRO_SD_NANO
 
+  compile-nano-v2:
+    name: Compile Nano V2 (I2C output controller) firmware
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stage sketch for compilation
+        run: |
+          mkdir -p /tmp/sketches/TIFF_TESTER_PRO_V2_NANO
+          cp Arduino_Nano_V2/TIFF_TESTER_PRO_V2_NANO.ino /tmp/sketches/TIFF_TESTER_PRO_V2_NANO/
+
+      - name: Compile TIFF_TESTER_PRO_V2_NANO.ino
+        uses: arduino/compile-sketches@v1
+        with:
+          fqbn: arduino:avr:nano:cpu=atmega328old
+          platforms: |
+            - name: arduino:avr
+          sketch-paths: |
+            - /tmp/sketches/TIFF_TESTER_PRO_V2_NANO
+
   analyze-and-build-app:
     name: Analyze and build TIFF TESTER PRO app
     runs-on: ubuntu-latest

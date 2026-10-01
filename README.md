@@ -22,6 +22,7 @@ TIFF_TESTER_PRO_SD/
 ├── Arduino_Nano_Safety/    Nano safety controller firmware
 ├── ESP32_Firmware/         ESP32 main application firmware
 ├── ESP32_Firmware_V2/      Separate Bluetooth-Classic "V2" ESP32 firmware (I2C Nano)
+├── Arduino_Nano_V2/        Nano I2C output controller for the V2 firmware
 ├── Mobile_App/             Flutter/Android companion app
 ├── SD_MODULES/             Module profiles stored on the SD card
 └── Documentation/          All project documentation (start here)
