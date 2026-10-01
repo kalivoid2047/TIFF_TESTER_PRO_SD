@@ -15,31 +15,45 @@
 // here, consistent with the existing firmware's caution about sending
 // arbitrary UDS routines to a vehicle/module.
 
+// Returns the value of the first `key=value` line, or "" if absent. Matches
+// only at the start of a (trimmed) line and skips `#`/`;` comment lines, so a
+// commented-out example like "# can_tx_id=0x..." is never mistaken for a real
+// setting. Still section-agnostic: use iniSection() to scope a lookup.
+static String iniValue(const String &data, const String &key, bool &found) {
+  found = false;
+  String needle = key + "=";
+  int pos = 0;
+  int len = data.length();
+  while (pos < len) {
+    int eol = data.indexOf('\n', pos);
+    if (eol < 0) eol = len;
+    String line = data.substring(pos, eol);
+    line.trim();
+    if (line.length() && line[0] != '#' && line[0] != ';' && line.startsWith(needle)) {
+      String v = line.substring(needle.length());
+      v.trim();
+      found = true;
+      return v;
+    }
+    pos = eol + 1;
+  }
+  return "";
+}
+
 static bool iniFlag(const String &data, const String &key) {
-  int pos = data.indexOf(key + "=");
-  if (pos < 0) return false;
-  int end = data.indexOf('\n', pos);
-  String v = data.substring(pos + key.length() + 1, end < 0 ? data.length() : end);
-  v.trim();
-  return v == "1";
+  bool found;
+  return iniValue(data, key, found) == "1";
 }
 
 static float iniFloat(const String &data, const String &key, float fallback) {
-  int pos = data.indexOf(key + "=");
-  if (pos < 0) return fallback;
-  int end = data.indexOf('\n', pos);
-  String v = data.substring(pos + key.length() + 1, end < 0 ? data.length() : end);
-  v.trim();
-  return v.length() ? v.toFloat() : fallback;
+  bool found;
+  String v = iniValue(data, key, found);
+  return (found && v.length()) ? v.toFloat() : fallback;
 }
 
 static String iniString(const String &data, const String &key) {
-  int pos = data.indexOf(key + "=");
-  if (pos < 0) return "";
-  int end = data.indexOf('\n', pos);
-  String v = data.substring(pos + key.length() + 1, end < 0 ? data.length() : end);
-  v.trim();
-  return v;
+  bool found;
+  return iniValue(data, key, found);
 }
 
 // Extracts the text of one `[SECTION]` block (up to the next `[` header or
@@ -100,17 +114,30 @@ bool loadActiveModule(const String &id) {
   // Diagnostic addressing from [COMMUNICATION] (all optional; defaults are
   // the generic OBD-II CAN IDs / functional K-Line addresses).
   String commSection = iniSection(data, "[COMMUNICATION]");
-  if (iniString(commSection, "can_tx_id").length())
+  if (iniString(commSection, "can_tx_id").length()) {
     activeModule.canTxId = strtoul(iniString(commSection, "can_tx_id").c_str(), nullptr, 0);
-  if (iniString(commSection, "can_rx_id").length())
+    activeModule.canIdsDefined = true;
+  }
+  if (iniString(commSection, "can_rx_id").length()) {
     activeModule.canRxId = strtoul(iniString(commSection, "can_rx_id").c_str(), nullptr, 0);
+    activeModule.canIdsDefined = true;
+  }
+  String padKey = iniString(commSection, "can_padding");
+  padKey.toLowerCase();
+  if (padKey == "0" || padKey == "none" || padKey == "off") activeModule.canPadding = false;
+  if (iniString(commSection, "can_pad_byte").length())
+    activeModule.canPadByte = (uint8_t)strtoul(iniString(commSection, "can_pad_byte").c_str(), nullptr, 0);
   activeModule.canExtended = iniFlag(commSection, "can_extended");
   if (iniFloat(commSection, "kline_baud", 0) > 0)
     activeModule.klineBaud = (long)iniFloat(commSection, "kline_baud", 10400);
-  if (iniString(commSection, "kline_target").length())
+  if (iniString(commSection, "kline_target").length()) {
     activeModule.klineTarget = (uint8_t)strtoul(iniString(commSection, "kline_target").c_str(), nullptr, 0);
-  if (iniString(commSection, "kline_source").length())
+    activeModule.klineAddrDefined = true;
+  }
+  if (iniString(commSection, "kline_source").length()) {
     activeModule.klineSource = (uint8_t)strtoul(iniString(commSection, "kline_source").c_str(), nullptr, 0);
+    activeModule.klineAddrDefined = true;
+  }
   activeModule.loaded = true;
   diagApplyModule(); // diag_engine.ino - push addressing/bitrate to the engine
 

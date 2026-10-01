@@ -22,10 +22,17 @@ class LiveDataCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
     final connected = app.isConnected;
+    // The V2 Bluetooth Classic firmware reports only voltage/current/relay,
+    // so position, temperature and the readiness flags are "n/a", not zero
+    // or NOT READY.
+    final classic = connected && app.isClassic;
     final s = app.nanoStatus;
 
-    String val(double v, int digits, String unit) =>
-        connected ? '${v.toStringAsFixed(digits)} $unit' : '-- $unit';
+    String val(double v, int digits, String unit, {bool reported = true}) {
+      if (!connected) return '-- $unit';
+      if (!reported) return 'n/a';
+      return '${v.toStringAsFixed(digits)} $unit';
+    }
 
     final String system;
     final Color systemColor;
@@ -46,8 +53,8 @@ class LiveDataCard extends StatelessWidget {
     Widget ready(String label, bool ok, {String bad = 'NOT READY'}) =>
         StatusRow(
           label: label,
-          value: !connected ? '--' : (ok ? 'READY' : bad),
-          valueColor: !connected
+          value: !connected ? '--' : (classic ? 'n/a' : (ok ? 'READY' : bad)),
+          valueColor: (!connected || classic)
               ? AppColors.textSecondary
               : (ok ? AppColors.success : AppColors.warning),
         );
@@ -60,8 +67,12 @@ class LiveDataCard extends StatelessWidget {
           StatusRow(label: 'Supply voltage', value: val(s.supplyV, 1, 'V')),
           StatusRow(label: 'DUT voltage', value: val(s.dutV, 1, 'V')),
           StatusRow(label: 'DUT current', value: val(s.currentA, 2, 'A')),
-          StatusRow(label: 'Position', value: val(s.positionPct, 0, '%')),
-          StatusRow(label: 'Temperature', value: val(s.tempC, 1, '°C')),
+          StatusRow(
+              label: 'Position',
+              value: val(s.positionPct, 0, '%', reported: !classic)),
+          StatusRow(
+              label: 'Temperature',
+              value: val(s.tempC, 1, '°C', reported: !classic)),
           const Divider(height: 24),
           ready('CAN', s.canReady),
           ready('K-LINE', s.klineReady),

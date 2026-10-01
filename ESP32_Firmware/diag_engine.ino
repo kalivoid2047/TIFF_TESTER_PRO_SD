@@ -9,7 +9,7 @@
 // /LOGS/DIAG.CSV.
 //
 // Commands (see Documentation/DIAGNOSTICS.md for the full table):
-//   CAN_INIT:<bitrate>,<clock_mhz>      CAN_CONFIG:<txHex>,<rxHex>,<ext 0|1>
+//   CAN_INIT:<bitrate>,<clock_mhz>      CAN_CONFIG:<txHex>,<rxHex>,<ext 0|1>[,<padHex|NONE>]
 //   CAN_TX:<idHex>,<ext 0|1>,<dataHex>  CAN_MONITOR:<0|1>
 //   UDS_REQUEST:<hex>  UDS_SESSION:<hex>  UDS_READ_DID:<hex>  UDS_READ_DTC
 //   UDS_CLEAR_DTC  UDS_TESTER_PRESENT
@@ -25,6 +25,12 @@
 // layers only allow the read-oriented service whitelists (uds_isotp.ino,
 // kline_iso14230.ino).
 
+// Arduino concatenates tabs alphabetically, so variables defined in tabs that
+// sort after this one (kline_iso14230, uds_isotp) must be declared here.
+extern String klineError;
+extern uint8_t isotpPadByte;
+extern bool isotpPadding;
+
 #define DIAG_QUEUE_LEN   6
 #define DIAG_LINE_MAX    170     // keep each notification inside the BLE MTU
 #define DIAG_LOG_PATH    "/LOGS/DIAG.CSV"
@@ -38,6 +44,15 @@ static volatile uint8_t diagHead = 0, diagTail = 0;
 static uint32_t diagCanTx = 0x7E0, diagCanRx = 0x7E8;
 static bool diagCanExt = false;
 static uint8_t diagKTarget = 0x33, diagKSource = 0xF1;
+
+// False while the generic default addressing is in use (nothing from a
+// module profile or an explicit CAN_CONFIG/KLINE_CONFIG). The first bus
+// command then prints a warning, so default IDs are never mistaken for
+// verified ones.
+static bool diagCanAddrExplicit = false;
+static bool diagKAddrExplicit = false;
+static bool diagCanWarned = false;
+static bool diagKWarned = false;
 
 static volatile bool canMonitorOn = false;
 static volatile bool klineMonitorOn = false;
@@ -110,6 +125,11 @@ void diagApplyModule() {
   diagCanExt = activeModule.canExtended;
   diagKTarget = activeModule.klineTarget;
   diagKSource = activeModule.klineSource;
+  isotpPadByte = activeModule.canPadByte;
+  isotpPadding = activeModule.canPadding;
+  diagCanAddrExplicit = activeModule.canIdsDefined;
+  diagKAddrExplicit = activeModule.klineAddrDefined;
+  diagCanWarned = diagKWarned = false;
   if (activeModule.klineBaud == 9600 || activeModule.klineBaud == 10400) klineSetBaud(activeModule.klineBaud);
 
   // A CAN module's bitrate is applied without persisting it as the default.
@@ -183,6 +203,11 @@ static void emitUdsResult(const uint8_t *resp, int n, const String &what) {
 
 static void runUds(const uint8_t *req, uint16_t len, const String &what, uint8_t kind) {
   // kind: 0 plain, 1 DTC list decode, 2 clear
+  if (!diagCanAddrExplicit && !diagCanWarned) {
+    diagCanWarned = true;
+    diagEmit("diag", false, "WARNING: no CAN IDs set by the module profile or CAN_CONFIG - using generic 0x" +
+                                String(diagCanTx, HEX) + "/0x" + String(diagCanRx, HEX) + ", unverified for this module");
+  }
   uint8_t resp[256];
   String err;
   diagLog("uds_req", what + " " + hexOf(req, len));
@@ -208,6 +233,11 @@ static void runUds(const uint8_t *req, uint16_t len, const String &what, uint8_t
 static void runKwp(const uint8_t *req, uint8_t len, const String &what, uint8_t kind) {
   uint8_t resp[96];
   String err;
+  if (!diagKAddrExplicit && !diagKWarned) {
+    diagKWarned = true;
+    diagEmit("diag", false, "WARNING: no K-Line addresses set by the module profile or KLINE_CONFIG - using generic target 0x" +
+                                String(diagKTarget, HEX) + " / source 0x" + String(diagKSource, HEX) + ", unverified for this module");
+  }
   diagLog("kwp_req", what + " " + hexOf(req, len));
   int n = kwpExchange(diagKTarget, diagKSource, req, len, resp, sizeof(resp), err);
   if (n < 0) { diagEmit("kwp", false, what + " FAILED: " + err); return; }
@@ -265,11 +295,26 @@ static void diagExecute(const String &cmd) {
 
   if (name == "CAN_CONFIG") {
     int c1 = arg.indexOf(','), c2 = c1 < 0 ? -1 : arg.indexOf(',', c1 + 1);
-    if (c2 < 0) { diagEmit("can_cfg", false, "usage CAN_CONFIG:<txHex>,<rxHex>,<ext 0|1>"); return; }
+    if (c2 < 0) { diagEmit("can_cfg", false, "usage CAN_CONFIG:<txHex>,<rxHex>,<ext 0|1>[,<padHex|NONE>]"); return; }
+    int c3 = arg.indexOf(',', c2 + 1);
     diagCanTx = strtoul(arg.substring(0, c1).c_str(), nullptr, 16);
     diagCanRx = strtoul(arg.substring(c1 + 1, c2).c_str(), nullptr, 16);
-    diagCanExt = arg.substring(c2 + 1).toInt() == 1;
-    diagEmit("can_cfg", true, "tx=0x" + String(diagCanTx, HEX) + " rx=0x" + String(diagCanRx, HEX) + (diagCanExt ? " 29-bit" : " 11-bit"));
+    diagCanExt = arg.substring(c2 + 1, c3 < 0 ? arg.length() : c3).toInt() == 1;
+    diagCanAddrExplicit = true;
+    if (c3 >= 0) {
+      String pad = arg.substring(c3 + 1);
+      pad.trim();
+      pad.toUpperCase();
+      if (pad == "NONE" || pad == "N") {
+        isotpPadding = false;
+      } else {
+        isotpPadding = true;
+        isotpPadByte = (uint8_t)strtoul(pad.c_str(), nullptr, 16);
+      }
+    }
+    String padText = isotpPadding ? "pad=0x" + String(isotpPadByte, HEX) : String("no padding");
+    diagEmit("can_cfg", true, "tx=0x" + String(diagCanTx, HEX) + " rx=0x" + String(diagCanRx, HEX) +
+                                  (diagCanExt ? " 29-bit " : " 11-bit ") + padText);
     return;
   }
 
@@ -328,6 +373,7 @@ static void diagExecute(const String &cmd) {
     if (!klineSetBaud(baud)) { diagEmit("kline", false, "BAD_BAUD (9600 or 10400)"); return; }
     diagKTarget = (uint8_t)strtoul(arg.substring(c1 + 1, c2).c_str(), nullptr, 16);
     diagKSource = (uint8_t)strtoul(arg.substring(c2 + 1).c_str(), nullptr, 16);
+    diagKAddrExplicit = true;
     diagEmit("kline", true, "baud=" + String(baud) + " target=0x" + String(diagKTarget, HEX) + " source=0x" + String(diagKSource, HEX));
     return;
   }

@@ -13,12 +13,17 @@
 //
 // NOT validated against a real ECU. Bench-test with a CAN analyser first.
 
-#define ISOTP_PAD          0xAA
 #define ISOTP_TIMEOUT_MS   1000   // N_Bs / N_Cr
 #define UDS_P2_MS          1000   // normal response wait
 #define UDS_P2_STAR_MS     5000   // after NRC 0x78 (response pending)
 
 String isotpError = "";
+
+// Frame padding. Default is pad-to-8 with 0xAA, but ECUs differ: some require
+// a specific pad byte (00/55/CC), some reject padded frames. Set per module
+// (can_pad_byte= / can_padding= in [COMMUNICATION]) or via CAN_CONFIG.
+uint8_t isotpPadByte = 0xAA;
+bool isotpPadding = true;
 
 static void isotpStMin(uint8_t st) {
   if (st <= 0x7F) { if (st) delay(st); }
@@ -28,9 +33,9 @@ static void isotpStMin(uint8_t st) {
 
 static bool isotpSendFrame(uint32_t id, bool ext, const uint8_t *payload, uint8_t n) {
   uint8_t f[8];
-  memset(f, ISOTP_PAD, sizeof(f));
+  memset(f, isotpPadByte, sizeof(f));
   memcpy(f, payload, n);
-  return canSendMessageExt(id, ext, f, 8);
+  return canSendMessageExt(id, ext, f, isotpPadding ? 8 : n);
 }
 
 // Waits for a frame with exactly (rxId, ext). Other traffic is dropped.

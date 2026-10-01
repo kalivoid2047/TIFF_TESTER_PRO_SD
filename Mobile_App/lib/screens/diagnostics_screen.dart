@@ -27,6 +27,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
   final _canTx = TextEditingController(text: '7E0');
   final _canRx = TextEditingController(text: '7E8');
   bool _canExt = false;
+  String _canPad = 'AA'; // hex byte, or NONE for no padding
   bool _canMonitor = false;
   final _rawCanId = TextEditingController(text: '7E0');
   final _rawCanData = TextEditingController();
@@ -73,6 +74,12 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
     }
     if (m.canRxId.isNotEmpty) _canRx.text = m.canRxId;
     _canExt = m.canExtended;
+    final pad = m.canPadding.trim().toUpperCase();
+    if (pad == 'NONE' || pad == '0') {
+      _canPad = 'NONE';
+    } else if (RegExp(r'^[0-9A-F]{1,2}$').hasMatch(pad)) {
+      _canPad = pad.padLeft(2, '0');
+    }
     final kb = int.tryParse(m.klineBaud);
     if (kb == 9600 || kb == 10400) _kBaud = kb!;
     if (m.klineTarget.isNotEmpty) _kTarget.text = m.klineTarget;
@@ -141,7 +148,9 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
   @override
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
-    final connected = app.isConnected;
+    final classic = app.isClassic;
+    // The V2 Bluetooth Classic firmware has no diagnostics engine.
+    final connected = app.isConnected && !classic;
 
     return DefaultTabController(
       length: 3,
@@ -167,6 +176,18 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
         ),
         body: Column(
           children: [
+            if (classic)
+              Container(
+                width: double.infinity,
+                color: AppColors.warning.withValues(alpha: 0.15),
+                padding: const EdgeInsets.all(12),
+                child: const Text(
+                  'Diagnostics need the BLE firmware (TiffTester). The '
+                  'connected V2 Bluetooth Classic board has no diagnostics '
+                  'engine, so these controls are disabled.',
+                  style: TextStyle(color: AppColors.warning, fontSize: 12),
+                ),
+              ),
             Expanded(
               flex: 5,
               child: TabBarView(children: [
@@ -292,6 +313,23 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
           title: 'Diagnostic addressing',
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             _row([_field(_canTx, 'TX ID (hex)'), _field(_canRx, 'RX ID (hex)')]),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: ['AA', '00', '55', 'CC', 'NONE'].contains(_canPad)
+                  ? _canPad
+                  : 'AA',
+              decoration: const InputDecoration(labelText: 'ISO-TP padding'),
+              items: const [
+                DropdownMenuItem(value: 'AA', child: Text('Pad with AA (default)')),
+                DropdownMenuItem(value: '00', child: Text('Pad with 00')),
+                DropdownMenuItem(value: '55', child: Text('Pad with 55')),
+                DropdownMenuItem(value: 'CC', child: Text('Pad with CC')),
+                DropdownMenuItem(value: 'NONE', child: Text('No padding (short frames)')),
+              ],
+              onChanged: (v) => setState(() => _canPad = v ?? 'AA'),
+            ),
+            _note('Some ECUs need a specific pad byte, others reject padded '
+                'frames. If requests time out with correct IDs, try the others.'),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('29-bit IDs'),
@@ -302,7 +340,7 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                 'APPLY IDS',
                 connected
                     ? () => _send(
-                        'CAN_CONFIG:${_hex(_canTx)},${_hex(_canRx)},${_canExt ? 1 : 0}')
+                        'CAN_CONFIG:${_hex(_canTx)},${_hex(_canRx)},${_canExt ? 1 : 0},$_canPad')
                     : null),
           ]),
         ),

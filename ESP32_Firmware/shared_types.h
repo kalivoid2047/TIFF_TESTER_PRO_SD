@@ -71,6 +71,14 @@ struct ModuleProfile {
   long klineBaud = 10400;
   uint8_t klineTarget = 0x33;
   uint8_t klineSource = 0xF1;
+  // ISO-TP padding: pad frames to 8 bytes with canPadByte, or send short
+  // frames when canPadding is false. ECUs differ - see DIAGNOSTICS.md.
+  uint8_t canPadByte = 0xAA;
+  bool canPadding = true;
+  // True only if the profile itself defined the addressing (otherwise the
+  // generic defaults above are in use and unverified for this module).
+  bool canIdsDefined = false;
+  bool klineAddrDefined = false;
 };
 
 // One captured CAN frame for the diagnostics monitor ring buffer.

@@ -162,6 +162,11 @@ class AppState extends ChangeNotifier {
 
   bool get isConnected => connectionState == AppConnectionState.connected;
 
+  /// True when connected over the V2 Bluetooth Classic link. That firmware
+  /// only reports voltage/current/relay state and has no auxiliary relays,
+  /// polarity control or diagnostics engine.
+  bool get isClassic => ble.isClassic;
+
   Future<void> powerOn() => ble.sendCommand('POWER_ON');
   Future<void> powerOff() => ble.sendCommand('POWER_OFF');
   Future<void> resetFault() => ble.sendCommand('RESET_FAULT');
@@ -379,6 +384,7 @@ class AppState extends ChangeNotifier {
       canRxId: copy.canRxId,
       klineBaud: copy.klineBaud,
       canExtended: copy.canExtended,
+      canPadding: copy.canPadding,
       klineTarget: copy.klineTarget,
       klineSource: copy.klineSource,
       minVoltage: copy.minVoltage,

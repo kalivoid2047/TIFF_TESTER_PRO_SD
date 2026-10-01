@@ -41,7 +41,7 @@ KWP framing/echo stripping, then returns text.
 | Command | Meaning |
 |---|---|
 | `CAN_INIT:<bitrate>,<clock_mhz>` | 125000/250000/500000/1000000, crystal 8 or 16; saved to `/CONFIG.INI` |
-| `CAN_CONFIG:<txHex>,<rxHex>,<ext 0\|1>` | diagnostic IDs (11- or 29-bit) |
+| `CAN_CONFIG:<txHex>,<rxHex>,<ext 0\|1>[,<padHex\|NONE>]` | diagnostic IDs (11- or 29-bit) and ISO-TP padding |
 | `CAN_TX:<idHex>,<ext>,<dataHex>` | one raw frame, max 8 bytes |
 | `CAN_MONITOR:<0\|1>` | stream received frames (batched, rate-limited) |
 | `UDS_REQUEST:<hex>` | raw request, whitelist enforced |
@@ -52,7 +52,17 @@ KWP framing/echo stripping, then returns text.
 | `KWP_REQUEST:<hex>` / `KWP_START_SESSION` / `KWP_READ_DTC` / `KWP_CLEAR_DTC` / `KWP_TESTER_PRESENT` | KWP2000 |
 | `DIAG_STOP` | stop monitors, drop queue |
 
-Not supported on the V2 Bluetooth Classic firmware (the app says so).
+### V2 Bluetooth Classic firmware
+
+The V2 board (`TIFF_TESTER_V2`) has no diagnostics engine, auxiliary relays,
+relay polarity control, temperature/position or readiness flags, and its
+sketch is not in this repo, so none of this can be added from here. The app
+detects a V2 connection and handles it explicitly instead of failing per tap:
+the Diagnostics screen shows a banner and disables its controls, the Controls
+screen disables relays 2-4 / relay tests / polarity with an explanation, and
+the Live Data card shows `n/a` (not zero or NOT READY) for the fields V2 does
+not report. Supporting diagnostics on V2 would need its protocol (or the V2
+source) added to the repo.
 
 ## CAN clock
 
@@ -65,9 +75,26 @@ Default is 8 MHz / 500 kbit/s; change it from the app (CAN INIT) or with
 
 ```
 protocol=CAN            bitrate=500000
-can_tx_id=0x7E0         can_rx_id=0x7E8        can_extended=0
-kline_baud=10400        kline_target=0x33      kline_source=0xF1
+can_tx_id=0x...         can_rx_id=0x...        can_extended=0
+can_pad_byte=0xAA       can_padding=1
+kline_baud=10400        kline_target=0x..      kline_source=0x..
 ```
+
+**Addressing is never assumed.** The shipped example profile leaves the IDs
+unset because the real ones for that module are unverified. If a profile (or
+an explicit `CAN_CONFIG` / `KLINE_CONFIG`) doesn't set them, the engine falls
+back to generic OBD-II values (CAN `0x7E0`/`0x7E8`, K-Line target `0x33`,
+tester `0xF1`) and prints a `WARNING ... unverified for this module` line
+before the first request on that bus. The INI parser ignores `#`/`;` comment
+lines and only matches keys at the start of a line, so commented examples are
+never read as values.
+
+**ISO-TP padding.** Default: pad every frame to 8 bytes with `0xAA`. ECUs
+differ - some need `00`/`55`/`CC`, some reject padded frames. Set
+`can_pad_byte=` (hex) and/or `can_padding=0` (send short frames), pick it in
+the app's CAN tab / module form, or pass it as the 4th `CAN_CONFIG` argument
+(`AA`, `00`, ... or `NONE`). If requests time out with correct IDs, try the
+other options.
 
 Selecting a module loads these into the engine; a CAN module's bitrate is
 applied at runtime (not saved as the default). The app's Module database
@@ -83,7 +110,6 @@ module.
 
 ## Known limits
 
-- ISO-TP pads frames with `0xAA`; some ECUs want a different pad byte.
 - CAN receive is polled (no interrupt), fine for diagnostics, can drop frames
   on a busy bus in the monitor.
 - 5-baud/fast-init timing follows the standards but ECUs vary.

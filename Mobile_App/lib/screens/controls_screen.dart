@@ -22,6 +22,8 @@ class ControlsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final app = context.watch<AppState>();
     final connected = app.isConnected;
+    // Relays 2-4, relay tests and polarity exist only on the BLE firmware.
+    final extended = connected && !app.isClassic;
     final status = app.nanoStatus;
 
     return Scaffold(
@@ -74,7 +76,7 @@ class ControlsScreen extends StatelessWidget {
                     Expanded(
                       child: OutlinedButton(
                         onPressed:
-                            connected ? () => _testRelay(context, app, 1) : null,
+                            extended ? () => _testRelay(context, app, 1) : null,
                         child: const Text('TEST RELAY 1'),
                       ),
                     ),
@@ -94,10 +96,14 @@ class ControlsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'Separate from the DUT relay above — these drive other '
-                  'bench outputs, not the device under test. All turn off '
-                  'on e-stop, any fault, link loss and ALL OUTPUTS OFF.',
+                Text(
+                  app.isClassic
+                      ? 'Not available: the connected V2 Bluetooth Classic '
+                          'board only has the DUT relay. Connect to the BLE '
+                          'firmware for relays 2-4.'
+                      : 'Separate from the DUT relay above — these drive other '
+                          'bench outputs, not the device under test. All turn off '
+                          'on e-stop, any fault, link loss and ALL OUTPUTS OFF.',
                   style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                 ),
                 const SizedBox(height: 8),
@@ -105,7 +111,7 @@ class ControlsScreen extends StatelessWidget {
                   _RelayRow(
                     n: n,
                     on: status.relays[n - 1],
-                    enabled: connected,
+                    enabled: extended,
                     onSet: (on) => _setRelay(context, app, n, on),
                     onTest: () => _testRelay(context, app, n),
                   ),
@@ -132,7 +138,7 @@ class ControlsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 OutlinedButton(
-                  onPressed: connected
+                  onPressed: extended
                       ? () => _confirmPolarity(context, app, !status.relayActiveLow)
                       : null,
                   child: Text(status.relayActiveLow

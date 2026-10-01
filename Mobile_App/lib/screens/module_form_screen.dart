@@ -30,6 +30,7 @@ class _ModuleFormScreenState extends State<ModuleFormScreen> {
   late final TextEditingController _canTxId;
   late final TextEditingController _canRxId;
   late final TextEditingController _klineBaud;
+  late final TextEditingController _canPadding;
   late final TextEditingController _klineTarget;
   late final TextEditingController _klineSource;
   late final TextEditingController _minVoltage;
@@ -64,6 +65,7 @@ class _ModuleFormScreenState extends State<ModuleFormScreen> {
     _canTxId = TextEditingController(text: m?.canTxId ?? '');
     _canRxId = TextEditingController(text: m?.canRxId ?? '');
     _klineBaud = TextEditingController(text: m?.klineBaud ?? '');
+    _canPadding = TextEditingController(text: m?.canPadding ?? '');
     _klineTarget = TextEditingController(text: m?.klineTarget ?? '');
     _klineSource = TextEditingController(text: m?.klineSource ?? '');
     _canExtended = m?.canExtended ?? false;
@@ -97,6 +99,7 @@ class _ModuleFormScreenState extends State<ModuleFormScreen> {
     _canTxId.dispose();
     _canRxId.dispose();
     _klineBaud.dispose();
+    _canPadding.dispose();
     _klineTarget.dispose();
     _klineSource.dispose();
     _minVoltage.dispose();
@@ -132,6 +135,7 @@ class _ModuleFormScreenState extends State<ModuleFormScreen> {
         canRxId: _canRxId.text.trim(),
         klineBaud: _klineBaud.text.trim(),
         canExtended: _canExtended,
+        canPadding: _canPadding.text.trim(),
         klineTarget: _klineTarget.text.trim(),
         klineSource: _klineSource.text.trim(),
         minVoltage: _minVoltage.text.trim(),
@@ -162,6 +166,7 @@ class _ModuleFormScreenState extends State<ModuleFormScreen> {
         canRxId: _canRxId.text.trim(),
         klineBaud: _klineBaud.text.trim(),
         canExtended: _canExtended,
+        canPadding: _canPadding.text.trim(),
         klineTarget: _klineTarget.text.trim(),
         klineSource: _klineSource.text.trim(),
         minVoltage: _minVoltage.text.trim(),
@@ -267,6 +272,12 @@ class _ModuleFormScreenState extends State<ModuleFormScreen> {
               value: _canExtended,
               onChanged: (v) => setState(() => _canExtended = v),
             ),
+            TextFormField(
+              controller: _canPadding,
+              decoration: const InputDecoration(
+                  labelText: 'ISO-TP padding (hex byte, "none", or blank = AA)'),
+            ),
+            const SizedBox(height: 12),
             Row(children: [
               Expanded(
                 child: TextFormField(

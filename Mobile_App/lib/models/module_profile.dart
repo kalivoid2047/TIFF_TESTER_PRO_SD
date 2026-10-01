@@ -20,6 +20,11 @@ class ModuleProfile {
   /// `can_extended=`; the firmware defaults to 11-bit.
   final bool canExtended;
 
+  /// ISO-TP padding: empty = firmware default (pad with AA), a hex byte
+  /// (e.g. `00`, `55`), or `none` to send short frames. ECUs differ; written
+  /// to the SD profile's `can_pad_byte=` / `can_padding=`.
+  final String canPadding;
+
   /// K-Line ECU/tester addresses as hex (e.g. `33`, `F1`).
   final String klineTarget;
   final String klineSource;
@@ -55,6 +60,7 @@ class ModuleProfile {
     this.canRxId = '',
     this.klineBaud = '',
     this.canExtended = false,
+    this.canPadding = '',
     this.klineTarget = '',
     this.klineSource = '',
     this.minVoltage = '',
@@ -84,6 +90,7 @@ class ModuleProfile {
     String? canRxId,
     String? klineBaud,
     bool? canExtended,
+    String? canPadding,
     String? klineTarget,
     String? klineSource,
     String? minVoltage,
@@ -114,6 +121,7 @@ class ModuleProfile {
         canRxId: canRxId ?? this.canRxId,
         klineBaud: klineBaud ?? this.klineBaud,
         canExtended: canExtended ?? this.canExtended,
+        canPadding: canPadding ?? this.canPadding,
         klineTarget: klineTarget ?? this.klineTarget,
         klineSource: klineSource ?? this.klineSource,
         minVoltage: minVoltage ?? this.minVoltage,
@@ -153,6 +161,7 @@ class ModuleProfile {
         'canRxId': canRxId,
         'klineBaud': klineBaud,
         'canExtended': canExtended,
+        'canPadding': canPadding,
         'klineTarget': klineTarget,
         'klineSource': klineSource,
         'minVoltage': minVoltage,
@@ -183,6 +192,7 @@ class ModuleProfile {
         canRxId: json['canRxId'] as String? ?? '',
         klineBaud: json['klineBaud'] as String? ?? '',
         canExtended: json['canExtended'] as bool? ?? false,
+        canPadding: json['canPadding'] as String? ?? '',
         klineTarget: json['klineTarget'] as String? ?? '',
         klineSource: json['klineSource'] as String? ?? '',
         minVoltage: json['minVoltage'] as String? ?? '',
