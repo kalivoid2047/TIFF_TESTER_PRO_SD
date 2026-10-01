@@ -176,14 +176,20 @@ class AppState extends ChangeNotifier {
   /// polarity control or diagnostics engine.
   bool get isClassic => ble.isClassic;
 
-  /// Last relay state *commanded* over the V2 link. The V2 firmware accepts
-  /// RELAY1..4_ON/OFF but reports no relay state, so this is what the UI shows
-  /// there (it is not a measurement).
+  /// Last relay state *commanded* over the V2 link. Only used with older V2
+  /// firmware that doesn't report relay state; V2.2.1+ reports it read back
+  /// from the Nano (see [relayStates]).
   final List<bool> _classicRelays = [false, false, false, false];
 
-  /// Relay states for the UI: reported by the BLE firmware, last-commanded on V2.
-  List<bool> get relayStates =>
-      isClassic ? List.unmodifiable(_classicRelays) : nanoStatus.relays;
+  /// Relay states for the UI: reported by the firmware where it can (BLE
+  /// firmware, V2.2.1+); the last command sent on older V2 firmware.
+  List<bool> get relayStates => (isClassic && !nanoStatus.relaysReported)
+      ? List.unmodifiable(_classicRelays)
+      : nanoStatus.relays;
+
+  /// True when the relay states shown are the last command sent rather than
+  /// a reading (older V2 firmware only).
+  bool get relayStatesAreCommanded => isClassic && !nanoStatus.relaysReported;
 
   Future<void> powerOn() => ble.sendCommand('POWER_ON');
   Future<void> powerOff() => ble.sendCommand('POWER_OFF');

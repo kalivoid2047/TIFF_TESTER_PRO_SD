@@ -101,10 +101,14 @@ class ControlsScreen extends StatelessWidget {
               children: [
                 Text(
                   app.isClassic
-                      ? 'V2 board: relays 1-4 are driven by the Nano. The V2 '
-                          'firmware reports no relay state, so these switches '
-                          'show the last command sent, not a measurement. '
-                          'Relay tests need the BLE firmware.'
+                      ? (app.relayStatesAreCommanded
+                          ? 'V2 board: relays 1-4 are driven by the Nano. This '
+                              'older V2 firmware reports no relay state, so these '
+                              'switches show the last command sent, not a '
+                              'measurement. Relay tests need the BLE firmware.'
+                          : 'V2 board: relays 1-4 are driven by the Nano and '
+                              'their state is read back from it. Relay tests '
+                              'need the BLE firmware.')
                       : 'Separate from the DUT relay above — these drive other '
                           'bench outputs, not the device under test. All turn off '
                           'on e-stop, any fault, link loss and ALL OUTPUTS OFF.',

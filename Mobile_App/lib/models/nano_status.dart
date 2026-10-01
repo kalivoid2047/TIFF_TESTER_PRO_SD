@@ -38,6 +38,11 @@ class NanoStatus {
   /// the UI shows n/a instead of a misleading number.
   final bool tempReported;
 
+  /// True when [relays] came from the firmware (BLE firmware, or V2.2.1+ which
+  /// reads them back from the Nano). False on older V2 firmware, where the
+  /// app can only show the last command it sent.
+  final bool relaysReported;
+
   const NanoStatus({
     required this.relay,
     required this.fault,
@@ -56,6 +61,7 @@ class NanoStatus {
     this.systemReady = false,
     this.relayActiveLow = true,
     this.tempReported = true,
+    this.relaysReported = true,
   });
 
   const NanoStatus.unknown()
@@ -75,7 +81,8 @@ class NanoStatus {
         inaReady = false,
         systemReady = false,
         relayActiveLow = true,
-        tempReported = true;
+        tempReported = true,
+        relaysReported = true;
 
   factory NanoStatus.fromJson(Map<String, dynamic> json) {
     return NanoStatus(

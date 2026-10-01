@@ -1,8 +1,9 @@
 # ESP32_Firmware_V2 — Bluetooth Classic "V2" firmware
 
-`TIFF_TESTER_PRO_V2_ESP32.ino` (V2.2) is the **separate Bluetooth-Classic-only
-firmware line** for the ESP32-WROOM-DA. It is added to the repo unmodified
-(byte-identical to the file it came from). It is *not* the main firmware in
+`TIFF_TESTER_PRO_V2_ESP32.ino` (V2.2.1) is the **separate Bluetooth-Classic-only
+firmware line** for the ESP32-WROOM-DA. It was added to the repo as the
+original V2.2 file and then changed in one place: V2.2.1 reads relay/MOSFET
+state back from the Nano (see "Changes from V2.2" below). It is *not* the main firmware in
 [`../ESP32_Firmware`](../ESP32_Firmware) and the two do not share code or
 wire protocol.
 
@@ -36,7 +37,26 @@ I2C 21/22, SPI 18/19/23, MCP2515 CS 5, SD CS 13, K-Line RX/TX 16/17, supply ADC
 `RESET_FAULT`, `RELAY1_ON`…`RELAY4_OFF`, `MOSFET1_ON`…`MOSFET2_OFF`, `SERIAL_LIVE`.
 
 `STATUS` returns one line:
-`VOLTAGE=…,DUT_VOLTAGE=…,CURRENT=…,POWER=…,POSITION=…,TEMP=…,DUT=ON|OFF,FAULT=…,NANO=…,INA219=…,SD=…,CAN=…,KLINE=…,WATCHDOG=OK,MODULE=…,STATUS=TESTING|IDLE`.
+`VOLTAGE=…,DUT_VOLTAGE=…,CURRENT=…,POWER=…,POSITION=…,TEMP=…,DUT=ON|OFF,FAULT=…,NANO=…,R1=…,R2=…,R3=…,R4=…,M1=…,M2=…,INA219=…,SD=…,CAN=…,KLINE=…,WATCHDOG=OK,MODULE=…,STATUS=TESTING|IDLE`
+(`R1..R4`/`M1..M2` are `ON`, `OFF`, or `UNKNOWN` if the Nano isn't answering).
+
+## Changes from V2.2
+
+V2.2.1 uses the status byte the Nano already returns (it used to be thrown
+away apart from "answered / didn't"):
+
+- `STATUS` gains `R1..R4`, `M1`, `M2` read back from the Nano.
+- Each `RELAYn_*` / `MOSFETn_*` command is **verified**: after sending it the
+  ESP32 reads the Nano's status and replies `OK|RELAY2=ON|CONFIRMED`, or
+  `ERROR|RELAY2=ON_NOT_CONFIRMED|NANO_FAULT=YES` (or `=NO`) if the Nano refused it.
+  The Nano ignores "on" commands while its heartbeat is stale or its e-stop is
+  pressed, which previously looked like success.
+- If the Nano's fault bit (e-stop / heartbeat lost) is set, `PRETEST` fails with
+  `NANO_FAULT`, and a running test is stopped with fault `NANO_FAULT`.
+- `FW_VERSION` is `2.2.1`. The boot banner text still says V2.2.
+
+Needs the matching Nano sketch (`../Arduino_Nano_V2`); a Nano that doesn't
+implement the status byte shows `UNKNOWN`/`NOT_CONFIRMED` for outputs.
 
 ## Nano I2C protocol and the matching Nano sketch
 
@@ -51,9 +71,8 @@ Nano pins: relays 1-4 on D4/D5/D7/D8 (active-LOW), MOSFETs 1-2 on D9/D10
 (active-HIGH), optional e-stop on D3 (active-LOW, pull-up), status LED D13,
 I2C on A4 (SDA) / A5 (SCL). The status byte returned is: bits 0-3 relays, bits
 4-5 MOSFETs, bit 6 fault (heartbeat lost or e-stop), bit 7 always 0 (so it can
-never equal 0xFF). **The ESP32 sketch only checks "answered / didn't answer"; it
-does not read relay state from this byte**, which is why the app can only show
-last-commanded relay states.
+never equal 0xFF). **V2.2.1 of the ESP32 sketch decodes this byte** and reports relay/MOSFET
+state and the fault bit (original V2.2 only checked "answered / didn't").
 
 **I2C levels:** ESP32 is 3.3 V, Nano is 5 V. The Nano sketch disables its
 internal pull-ups, but you still need a bidirectional level shifter (BSS138
@@ -64,8 +83,9 @@ type) or pull-ups to 3.3 V, plus common ground.
 - **`TEMP` is not degrees C.** `readTemperatureC()` is a placeholder that
   returns the raw ADC voltage (see the comment in the sketch). The app shows
   temperature as n/a for V2 for that reason.
-- **Relays 1–4 are command-only.** `STATUS` does not report their state, so the
-  app shows the last command sent, not a measured state.
+- **Relay state is the Nano's own report of what it commanded**, not a measurement
+  of the relay contacts or load: nothing on this hardware observes the output
+  side of the relays.
 - **The DUT relay is active-HIGH** on GPIO27 (`HIGH` = on), while the header's
   "relay inputs are active LOW" refers to the Nano's relay outputs. The
   separate V2.3 notes asked for an active-low DUT relay; this V2.2 file is not

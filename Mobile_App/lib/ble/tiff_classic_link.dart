@@ -152,6 +152,14 @@ class TiffClassicLink {
       inaReady: kv['INA219'] == 'READY',
       // V2's TEMP is a raw ADC voltage placeholder, not degrees C.
       tempReported: false,
+      // V2.2.1+ reports R1..R4 read back from the Nano; older V2.2 doesn't.
+      relays: [
+        kv['R1'] == 'ON',
+        kv['R2'] == 'ON',
+        kv['R3'] == 'ON',
+        kv['R4'] == 'ON',
+      ],
+      relaysReported: kv.containsKey('R1'),
     );
   }
 

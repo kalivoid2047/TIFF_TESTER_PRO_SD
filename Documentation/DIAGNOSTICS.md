@@ -60,10 +60,11 @@ the K-Line UART. The app detects a V2 connection and says so instead of
 failing per tap:
 
 - **Diagnostics screen:** banner + controls disabled.
-- **Relays:** V2 *does* have Nano relays 1-4 (`RELAY1_ON` ... `RELAY4_OFF`),
-  and the app maps its relay switches onto them. V2 reports no relay state, so
-  the switches show the **last command sent**, not a measurement. Relay tests
-  and polarity control exist only on the BLE firmware.
+- **Relays:** V2 has Nano relays 1-4 (`RELAY1_ON` ... `RELAY4_OFF`), and the
+  app maps its relay switches onto them. V2.2.1 reads their state back from
+  the Nano; older V2.2 firmware doesn't, in which case the app shows the
+  **last command sent** and says so. Relay tests and polarity control exist
+  only on the BLE firmware.
 - **Live Data:** position, INA219, CAN, K-LINE and system state are shown (V2
   reports them). **Temperature shows n/a** because V2's `TEMP` is a raw ADC
   voltage placeholder, not degrees C.

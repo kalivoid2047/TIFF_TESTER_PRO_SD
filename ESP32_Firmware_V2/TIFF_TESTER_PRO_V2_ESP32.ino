@@ -62,9 +62,13 @@
 #define NANO_HEARTBEAT_INTERVAL 500UL
 #define NANO_TIMEOUT_MS 1500UL
 
-#define FW_VERSION "2.2"
+#define FW_VERSION "2.2.1"
 
 // -------------------- NANO PROTOCOL --------------------
+// Status byte returned by the Nano (Arduino_Nano_V2/TIFF_TESTER_PRO_V2_NANO.ino):
+//   bit0..3 relay 1..4 energized, bit4..5 MOSFET 1..2 on,
+//   bit6 fault (Nano heartbeat lost or e-stop pressed), bit7 always 0.
+// 0xFF is reserved here to mean "Nano did not answer".
 #define NANO_GET_STATUS 0x01
 #define NANO_ALL_OFF    0x02
 #define NANO_HEARTBEAT  0x03
@@ -91,6 +95,9 @@ Adafruit_INA219 ina219(INA_ADDR);
 bool sdReady = false;
 bool inaReady = false;
 bool nanoOnline = false;
+bool nanoStateKnown = false;   // true once a valid status byte has been read
+uint8_t nanoOutputs = 0;       // bit0..3 relays 1..4, bit4..5 MOSFETs 1..2
+bool nanoFaultBit = false;     // Nano reports e-stop / heartbeat-lost fault
 bool canReady = false;
 bool klineReady = false;
 
@@ -234,9 +241,29 @@ uint8_t nanoStatus() {
   return Wire.read();
 }
 
-void updateNanoStatus() {
-  uint8_t s = nanoStatus();
+// Stores a status byte read from the Nano. 0xFF means no answer, in which
+// case the output states are unknown rather than "all off".
+void applyNanoStatus(uint8_t s) {
   nanoOnline = (s != 0xFF);
+  if (nanoOnline) {
+    nanoOutputs = s & 0x3F;
+    nanoFaultBit = (s & 0x40) != 0;
+    nanoStateKnown = true;
+  } else {
+    nanoFaultBit = false;
+    nanoStateKnown = false;
+  }
+}
+
+void updateNanoStatus() {
+  applyNanoStatus(nanoStatus());
+}
+
+// "ON" / "OFF", or "UNKNOWN" when the Nano hasn't answered (idx 0..3 =
+// relays 1..4, 4..5 = MOSFETs 1..2).
+String nanoOutputState(uint8_t idx) {
+  if (!nanoStateKnown) return "UNKNOWN";
+  return ((nanoOutputs >> idx) & 1) ? "ON" : "OFF";
 }
 
 void sendNanoHeartbeat() {
@@ -264,7 +291,37 @@ void nanoOutputCommand(uint8_t cmd, const String &label) {
     return;
   }
 
-  btReply("OK|" + label);
+  // Which output does this command target, and is it an ON or an OFF?
+  uint8_t idx;
+  bool wantOn;
+  if (cmd >= NANO_R1_ON && cmd <= NANO_R4_OFF) {
+    idx = (cmd - NANO_R1_ON) / 2;
+    wantOn = ((cmd - NANO_R1_ON) % 2) == 0;
+  } else if (cmd >= NANO_M1_ON && cmd <= NANO_M2_OFF) {
+    idx = 4 + (cmd - NANO_M1_ON) / 2;
+    wantOn = ((cmd - NANO_M1_ON) % 2) == 0;
+  } else {
+    btReply("OK|" + label);
+    return;
+  }
+
+  // The Nano silently ignores an ON it considers unsafe (stale heartbeat,
+  // e-stop pressed), so read its status back instead of assuming success.
+  delay(5);
+  uint8_t s = nanoStatus();
+  applyNanoStatus(s);
+  if (!nanoOnline) {
+    btReply("ERROR|NANO_OFFLINE");
+    return;
+  }
+
+  bool isOn = ((nanoOutputs >> idx) & 1) != 0;
+  if (isOn == wantOn) {
+    btReply("OK|" + label + "|CONFIRMED");
+  } else {
+    btReply("ERROR|" + label + "_NOT_CONFIRMED|NANO_FAULT=" +
+            String(nanoFaultBit ? "YES" : "NO"));
+  }
 }
 
 // -------------------- MCP2515 BASIC CHECK --------------------
@@ -674,6 +731,11 @@ bool runPretest(bool sendResult) {
     return false;
   }
 
+  if (nanoFaultBit) {
+    if (sendResult) btReply("PRETEST=FAIL|NANO_FAULT (e-stop pressed or heartbeat lost)");
+    return false;
+  }
+
   if (!inaReady) {
     if (sendResult) btReply("PRETEST=FAIL|INA219_NOT_READY");
     return false;
@@ -815,6 +877,11 @@ void safetyCheck() {
     triggerFault("NANO_OFFLINE");
     return;
   }
+
+  if (nanoFaultBit) {
+    triggerFault("NANO_FAULT");
+    return;
+  }
 }
 
 // -------------------- TEST CONTROL --------------------
@@ -893,6 +960,12 @@ String liveStatus() {
   s += ",DUT=" + String(digitalRead(DUT_RELAY) ? "ON" : "OFF");
   s += ",FAULT=" + String(faultActive ? faultReason : "NO");
   s += ",NANO=" + String(nanoOnline ? "ONLINE" : "OFFLINE");
+  s += ",R1=" + nanoOutputState(0);
+  s += ",R2=" + nanoOutputState(1);
+  s += ",R3=" + nanoOutputState(2);
+  s += ",R4=" + nanoOutputState(3);
+  s += ",M1=" + nanoOutputState(4);
+  s += ",M2=" + nanoOutputState(5);
   s += ",INA219=" + String(inaReady ? "READY" : "ERROR");
   s += ",SD=" + String(sdReady ? "READY" : "ERROR");
   s += ",CAN=" + String(canReady ? "READY" : "ERROR");
@@ -917,6 +990,9 @@ void printSerialLive() {
   Serial.println("----------------------------------------");
   Serial.println("DUT Relay      : " + String(digitalRead(DUT_RELAY) ? "ON" : "OFF"));
   Serial.println("Nano           : " + String(nanoOnline ? "ONLINE" : "OFFLINE"));
+  Serial.println("Nano Relays    : R1=" + nanoOutputState(0) + " R2=" + nanoOutputState(1) +
+                 " R3=" + nanoOutputState(2) + " R4=" + nanoOutputState(3));
+  Serial.println("Nano MOSFETs   : M1=" + nanoOutputState(4) + " M2=" + nanoOutputState(5));
   Serial.println("INA219         : " + String(inaReady ? "READY" : "ERROR"));
   Serial.println("SD Card        : " + String(sdReady ? "READY" : "ERROR"));
   Serial.println("CAN            : " + String(canReady ? "READY" : "ERROR"));
