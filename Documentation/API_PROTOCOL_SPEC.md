@@ -101,6 +101,21 @@ bench without 12 V). All relays drop on e-stop, any fault, heartbeat loss,
 its test reports `PASS`/`FAIL`; relays 2-4 report `ACTUATED` (marked pass,
 with a "confirm visually" note) because nothing can observe them.
 
+#### Polarity and diagnostics commands
+
+```
+SET_POLARITY:<0|1>   relay polarity for all four relays (1 = active-low, the default)
+DIAG_STOP            stop monitors and drop queued diagnostics (allowed without PIN)
+CAN_INIT:<bitrate>,<clock_mhz>, CAN_CONFIG:<tx>,<rx>,<ext>, CAN_TX:<id>,<ext>,<data>, CAN_MONITOR:<0|1>
+UDS_REQUEST:<hex>, UDS_SESSION:<hex>, UDS_READ_DID:<hex>, UDS_READ_DTC, UDS_CLEAR_DTC, UDS_TESTER_PRESENT
+KLINE_CONFIG:<baud>,<target>,<source>, KLINE_INIT, KLINE_5BAUD_INIT, KLINE_MONITOR:<0|1>
+KWP_REQUEST:<hex>, KWP_START_SESSION, KWP_READ_DTC, KWP_CLEAR_DTC, KWP_TESTER_PRESENT
+```
+
+Diagnostics output arrives on the Result characteristic as
+`diag:<kind>,<OK|ERR>,<text>`; clients must route the `diag:` prefix to a
+console, not the results list. See [DIAGNOSTICS.md](DIAGNOSTICS.md).
+
 ### 1.4 Status notify format
 Reuses the existing `STATUS,relay,fault,estop,watchdog,supply,dut,current,
 faulttext` CSV line already produced by the Nano — the ESP32 simply relays
@@ -128,6 +143,7 @@ Additional live-data fields (all optional for older clients):
 Nano. `pos_pct` is a raw 0-3.3 V reading of ESP32 GPIO33 (0 when nothing is
 connected). `kline` means the UART is open, not that an ECU answered.
 `sys` = Nano online + watchdog active + no fault + e-stop released.
+`pol` = 1 when the relays are configured active-low.
 
 ## 2. Wi-Fi / REST interface (existing, retained)
 
@@ -227,7 +243,7 @@ RELAY_TEST_STOP
 ```
 Extra status lines (the `STATUS` line itself is unchanged):
 ```
-EXT,<relay1>,<relay2>,<relay3>,<relay4>,<tempC>
+EXT,<relay1>,<relay2>,<relay3>,<relay4>,<tempC>,<activeLow>
 RELAY_TEST,<n>,<RUNNING|DONE|ABORTED>,<cycle>,<PASS|FAIL|ACTUATED|>,<detail>
 ```
 

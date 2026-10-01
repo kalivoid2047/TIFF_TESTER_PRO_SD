@@ -52,11 +52,14 @@ GPIO33 = position feedback (0-3.3 V -> 0-100 %; protect/divide the real
          not a real position)
 
 NOTE ON RELAY POLARITY:
-The relay module's electrical logic must match the firmware. This is now
-runtime-configurable instead of requiring a firmware edit: send
-`SET_RELAY_POLARITY,0` (active-high, GPIO HIGH = energized — the previous
-hardcoded default) or `SET_RELAY_POLARITY,1` (active-low module) to the
-Nano over UART; it persists to EEPROM. The Nano forces the relay off
+The relay module's electrical logic must match the firmware. The default is
+now ACTIVE-LOW (GPIO LOW = energized, HIGH = off) for all four relays; before
+this change it was active-high. A Nano that has already saved a polarity to
+EEPROM keeps that value, so only a fresh/reset unit changes behaviour. It is
+runtime-configurable instead of requiring a firmware edit: use the app's
+Controls > Relay Polarity, or send `SET_RELAY_POLARITY,0` (active-high) or
+`SET_RELAY_POLARITY,1` (active-low) to the Nano over UART; it persists to
+EEPROM. The Nano forces the relay off
 before and after changing this setting. You must still confirm which
 value is correct against your actual relay module on the bench — nothing
 here has verified your physical wiring for you.

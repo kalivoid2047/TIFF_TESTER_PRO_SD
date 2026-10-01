@@ -8,6 +8,7 @@ import '../widgets/live_data_card.dart';
 import 'all_injectors_test_screen.dart';
 import 'coil_test_screen.dart';
 import 'controls_screen.dart';
+import 'diagnostics_screen.dart';
 import 'injector_test_screen.dart';
 import 'module_database_screen.dart';
 import 'module_selection_screen.dart';
@@ -206,6 +207,25 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                   ],
+                ),
+              ],
+            ),
+          ),
+          AppCard(
+            title: 'Diagnostics',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'CAN / UDS / K-Line / KWP: monitor, read DTCs and data. '
+                  'Read-oriented services only.',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const DiagnosticsScreen())),
+                  child: const Text('OPEN DIAGNOSTICS'),
                 ),
               ],
             ),

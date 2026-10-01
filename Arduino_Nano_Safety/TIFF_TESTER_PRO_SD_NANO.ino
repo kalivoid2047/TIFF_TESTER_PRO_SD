@@ -19,7 +19,7 @@
     CAL_DUT,<actual_voltage>             calibrate DUT divider ratio
     CAL_CURRENT_ZERO                     capture current-sensor zero point (DUT off)
     CAL_CURRENT_SCALE,<actual_current_a> calibrate current-sensor V/A scale
-    SET_RELAY_POLARITY,<0|1>             0=active-high (default), 1=active-low relay module
+    SET_RELAY_POLARITY,<0|1>             0=active-high, 1=active-low relay module (default)
     RESET_CALIBRATION                    revert to firmware-default constants
     GET_CONFIG                           report current calibration/polarity state
     INJ_TEST,<channel>,<pulse_width_ms>,<duration_s>   start injector test window
@@ -120,7 +120,12 @@ float supplyDividerCal = SUPPLY_DIVIDER;
 float dutDividerCal = DUT_DIVIDER;
 float currentZeroCal = CURRENT_ZERO_V;
 float currentScaleCal = CURRENT_V_PER_A;
-bool relayActiveLow = false; // false = GPIO HIGH energizes (existing default behavior)
+// Default is ACTIVE-LOW (GPIO LOW energizes, HIGH = off) to match the relay
+// module in use. Active-low is also the safer unconfigured default: a pulled-up
+// or floating input keeps the relay released. A value saved to EEPROM by
+// SET_RELAY_POLARITY overrides this. Applies to all four relays.
+const bool RELAY_DEFAULT_ACTIVE_LOW = true;
+bool relayActiveLow = RELAY_DEFAULT_ACTIVE_LOW;
 bool calibrated = false;
 
 void loadCalibration() {
@@ -136,7 +141,7 @@ void loadCalibration() {
     dutDividerCal = DUT_DIVIDER;
     currentZeroCal = CURRENT_ZERO_V;
     currentScaleCal = CURRENT_V_PER_A;
-    relayActiveLow = false;
+    relayActiveLow = RELAY_DEFAULT_ACTIVE_LOW;
     calibrated = false;
   }
 }
@@ -490,7 +495,7 @@ void sendStatus() {
   Serial.println(faultText);
 }
 
-// EXT,<relay1>,<relay2>,<relay3>,<relay4>,<tempC> - kept as its own line so
+// EXT,<relay1>,<relay2>,<relay3>,<relay4>,<tempC>,<activeLow> - kept as its own line so
 // the existing STATUS line format (and its consumers) is unchanged.
 void sendExtStatus() {
   Serial.print("EXT,");
@@ -500,7 +505,9 @@ void sendExtStatus() {
     Serial.print(auxOn[i] ? 1 : 0);
   }
   Serial.print(",");
-  Serial.println(tempC, 1);
+  Serial.print(tempC, 1);
+  Serial.print(",");
+  Serial.println(relayActiveLow ? 1 : 0);
 }
 
 void sendConfig() {
@@ -648,7 +655,7 @@ void processCommand(String cmd) {
     dutDividerCal = DUT_DIVIDER;
     currentZeroCal = CURRENT_ZERO_V;
     currentScaleCal = CURRENT_V_PER_A;
-    relayActiveLow = false;
+    relayActiveLow = RELAY_DEFAULT_ACTIVE_LOW;
     writeRelayPhysical(false);
     auxAllOff();
     calibrated = false;

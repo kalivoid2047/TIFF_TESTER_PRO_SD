@@ -29,6 +29,10 @@ class NanoStatus {
   final bool inaReady;
   final bool systemReady;
 
+  /// True if the relay module is configured active-low (GPIO LOW = energized),
+  /// the firmware default. Applies to all four relays.
+  final bool relayActiveLow;
+
   const NanoStatus({
     required this.relay,
     required this.fault,
@@ -45,6 +49,7 @@ class NanoStatus {
     this.klineReady = false,
     this.inaReady = false,
     this.systemReady = false,
+    this.relayActiveLow = true,
   });
 
   const NanoStatus.unknown()
@@ -62,7 +67,8 @@ class NanoStatus {
         canReady = false,
         klineReady = false,
         inaReady = false,
-        systemReady = false;
+        systemReady = false,
+        relayActiveLow = true;
 
   factory NanoStatus.fromJson(Map<String, dynamic> json) {
     return NanoStatus(
@@ -81,6 +87,7 @@ class NanoStatus {
       klineReady: (json['kline'] ?? 0) == 1,
       inaReady: (json['ina'] ?? 0) == 1,
       systemReady: (json['sys'] ?? 0) == 1,
+      relayActiveLow: (json['pol'] ?? 1) == 1,
     );
   }
 

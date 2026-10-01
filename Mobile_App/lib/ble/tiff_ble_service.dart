@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
+import '../models/diag_line.dart';
 import '../models/nano_status.dart';
 import '../models/test_result.dart';
 import 'tiff_classic_link.dart';
@@ -45,9 +46,14 @@ class TiffBleService {
   final _resultController = StreamController<TestResult>.broadcast();
   final _connectionController =
       StreamController<BluetoothConnectionState>.broadcast();
+  final _diagController = StreamController<DiagLine>.broadcast();
 
   Stream<NanoStatus> get statusStream => _statusController.stream;
   Stream<TestResult> get resultStream => _resultController.stream;
+
+  /// Diagnostics console lines (`diag:` notifications), kept separate from
+  /// test results so monitor traffic doesn't flood the Results list.
+  Stream<DiagLine> get diagStream => _diagController.stream;
   Stream<BluetoothConnectionState> get connectionStateStream =>
       _connectionController.stream;
 
@@ -142,6 +148,11 @@ class TiffBleService {
   void _handleResultBytes(List<int> bytes) {
     try {
       final text = utf8.decode(bytes);
+      final diag = DiagLine.tryParse(text);
+      if (diag != null) {
+        _diagController.add(diag);
+        return;
+      }
       _resultController.add(TestResult.parse(text));
     } catch (_) {
       // Same reasoning as above.
@@ -254,6 +265,7 @@ class TiffBleService {
     _resultSub?.cancel();
     _statusController.close();
     _resultController.close();
+    _diagController.close();
     _connectionController.close();
   }
 }

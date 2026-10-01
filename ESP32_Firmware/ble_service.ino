@@ -63,7 +63,7 @@ class BleCommandCallbacks : public BLECharacteristicCallbacks {
     // POWER_OFF/STOP_TEST are always allowed (safety-favorable), matching
     // Documentation/API_PROTOCOL_SPEC.md §1.3 — everything else requires
     // PIN auth first.
-    bool alwaysAllowed = (cmd == "POWER_OFF" || cmd == "STOP_TEST");
+    bool alwaysAllowed = (cmd == "POWER_OFF" || cmd == "STOP_TEST" || cmd == "DIAG_STOP");
     if (!bleAuthenticated && !alwaysAllowed) return;
 
     // RELAY:<n>,<0|1> (1=DUT, 2-4=auxiliary) and RELAY_TEST:<n>. The Nano
@@ -82,6 +82,20 @@ class BleCommandCallbacks : public BLECharacteristicCallbacks {
       if (n >= 1 && n <= 4) sendNano("RELAY_TEST," + String(n));
       return;
     }
+
+    // SET_POLARITY:<0|1> - relay module polarity for all four relays
+    // (1 = active-low). The Nano forces every relay off before and after
+    // changing it and persists the setting to EEPROM.
+    if (cmd.startsWith("SET_POLARITY:")) {
+      int v = cmd.substring(13).toInt();
+      sendNano("SET_RELAY_POLARITY," + String(v == 1 ? 1 : 0));
+      logLine("/LOGS/system.log", "Relay polarity set via BLE: " + String(v == 1 ? "active-low" : "active-high"));
+      return;
+    }
+
+    // CAN / UDS / K-Line / KWP diagnostics (diag_engine.ino). These are only
+    // queued here; they cannot switch relays (see Documentation/DIAGNOSTICS.md).
+    if (diagHandleCommand(cmd)) return;
 
     if (cmd == "POWER_ON") { sendNano("POWER_ON"); return; }
     if (cmd == "POWER_OFF") { sendNano("POWER_OFF"); return; }

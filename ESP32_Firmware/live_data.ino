@@ -69,7 +69,53 @@ String liveStatusJson() {
   out += "\"can\":" + String(canReady ? 1 : 0) + ",";
   out += "\"kline\":" + String(klineReady ? 1 : 0) + ",";
   out += "\"ina\":" + String(inaReady ? 1 : 0) + ",";
-  out += "\"sys\":" + String(liveSystemReady() ? 1 : 0);
+  out += "\"sys\":" + String(liveSystemReady() ? 1 : 0) + ",";
+  out += "\"pol\":" + String(nano.relayActiveLow ? 1 : 0);
   out += "}";
   return out;
+}
+
+// ---------- per-test CSV log ----------
+//
+// While the DUT relay is energised, appends one row per second to
+// /LOGS/TEST_<uptime_ms>.CSV (a new file each time the relay turns on), so a
+// test leaves behind an electrical record to go with the DIAG.CSV
+// communication record.
+void liveLogLoop() {
+  static bool wasOn = false;
+  static String path;
+  static uint32_t lastRow = 0;
+
+  if (!nano.relay) { wasOn = false; return; }
+
+  uint32_t now = millis();
+  if (!wasOn) {
+    wasOn = true;
+    path = "/LOGS/TEST_" + String(now) + ".CSV";
+    File h = SD.open(path, FILE_WRITE);
+    if (h) {
+      h.println("TIME_MS,SUPPLY_V,DUT_V,CURRENT_A,POWER_W,POSITION_PCT,TEMP_C,RELAYS,NANO,FAULT,MODULE,COMM");
+      h.close();
+    }
+    lastRow = 0;
+  }
+  if (lastRow && now - lastRow < 1000) return;
+  lastRow = now;
+
+  float dutV = liveDutV(), dutA = liveDutA();
+  File f = SD.open(path, FILE_APPEND);
+  if (!f) return;
+  f.print(now); f.print(",");
+  f.print(nano.supplyV, 2); f.print(",");
+  f.print(dutV, 2); f.print(",");
+  f.print(dutA, 2); f.print(",");
+  f.print(dutV * dutA, 2); f.print(",");
+  f.print(livePositionPct(), 0); f.print(",");
+  f.print(nano.tempC, 1); f.print(",");
+  f.print(String(nano.relay ? 1 : 0) + String(nano.aux[0] ? 1 : 0) + String(nano.aux[1] ? 1 : 0) + String(nano.aux[2] ? 1 : 0)); f.print(",");
+  f.print(liveNanoOnline() ? "ONLINE" : "OFFLINE"); f.print(",");
+  f.print(nano.fault ? nano.faultText : String("NO")); f.print(",");
+  f.print(activeModule.loaded ? activeModule.id : String("UNKNOWN")); f.print(",");
+  f.println(activeModule.loaded ? activeModule.commProtocol : String(""));
+  f.close();
 }

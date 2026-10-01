@@ -30,6 +30,8 @@ class _ModuleFormScreenState extends State<ModuleFormScreen> {
   late final TextEditingController _canTxId;
   late final TextEditingController _canRxId;
   late final TextEditingController _klineBaud;
+  late final TextEditingController _klineTarget;
+  late final TextEditingController _klineSource;
   late final TextEditingController _minVoltage;
   late final TextEditingController _maxVoltage;
   late final TextEditingController _maxCurrent;
@@ -47,6 +49,7 @@ class _ModuleFormScreenState extends State<ModuleFormScreen> {
   late final TextEditingController _sdModuleId;
 
   String? _vehicleId;
+  bool _canExtended = false;
 
   bool get _editing => widget.module != null;
 
@@ -61,6 +64,9 @@ class _ModuleFormScreenState extends State<ModuleFormScreen> {
     _canTxId = TextEditingController(text: m?.canTxId ?? '');
     _canRxId = TextEditingController(text: m?.canRxId ?? '');
     _klineBaud = TextEditingController(text: m?.klineBaud ?? '');
+    _klineTarget = TextEditingController(text: m?.klineTarget ?? '');
+    _klineSource = TextEditingController(text: m?.klineSource ?? '');
+    _canExtended = m?.canExtended ?? false;
     _minVoltage = TextEditingController(text: m?.minVoltage ?? '');
     _maxVoltage = TextEditingController(text: m?.maxVoltage ?? '');
     _maxCurrent = TextEditingController(text: m?.maxCurrent ?? '');
@@ -91,6 +97,8 @@ class _ModuleFormScreenState extends State<ModuleFormScreen> {
     _canTxId.dispose();
     _canRxId.dispose();
     _klineBaud.dispose();
+    _klineTarget.dispose();
+    _klineSource.dispose();
     _minVoltage.dispose();
     _maxVoltage.dispose();
     _maxCurrent.dispose();
@@ -123,6 +131,9 @@ class _ModuleFormScreenState extends State<ModuleFormScreen> {
         canTxId: _canTxId.text.trim(),
         canRxId: _canRxId.text.trim(),
         klineBaud: _klineBaud.text.trim(),
+        canExtended: _canExtended,
+        klineTarget: _klineTarget.text.trim(),
+        klineSource: _klineSource.text.trim(),
         minVoltage: _minVoltage.text.trim(),
         maxVoltage: _maxVoltage.text.trim(),
         maxCurrent: _maxCurrent.text.trim(),
@@ -150,6 +161,9 @@ class _ModuleFormScreenState extends State<ModuleFormScreen> {
         canTxId: _canTxId.text.trim(),
         canRxId: _canRxId.text.trim(),
         klineBaud: _klineBaud.text.trim(),
+        canExtended: _canExtended,
+        klineTarget: _klineTarget.text.trim(),
+        klineSource: _klineSource.text.trim(),
         minVoltage: _minVoltage.text.trim(),
         maxVoltage: _maxVoltage.text.trim(),
         maxCurrent: _maxCurrent.text.trim(),
@@ -244,6 +258,29 @@ class _ModuleFormScreenState extends State<ModuleFormScreen> {
                 child: TextFormField(
                   controller: _canRxId,
                   decoration: const InputDecoration(labelText: 'CAN RX ID'),
+                ),
+              ),
+            ]),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('29-bit (extended) CAN IDs'),
+              value: _canExtended,
+              onChanged: (v) => setState(() => _canExtended = v),
+            ),
+            Row(children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _klineTarget,
+                  decoration: const InputDecoration(
+                      labelText: 'K-Line ECU address (hex)'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextFormField(
+                  controller: _klineSource,
+                  decoration: const InputDecoration(
+                      labelText: 'K-Line tester address (hex)'),
                 ),
               ),
             ]),

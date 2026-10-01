@@ -96,7 +96,23 @@ bool loadActiveModule(const String &id) {
   activeModule.serviceScvLearn = iniFlag(data, "scv_learn");
   activeModule.commProtocol = iniString(data, "protocol");
   activeModule.commBitrate = (long)iniFloat(data, "bitrate", 0);
+
+  // Diagnostic addressing from [COMMUNICATION] (all optional; defaults are
+  // the generic OBD-II CAN IDs / functional K-Line addresses).
+  String commSection = iniSection(data, "[COMMUNICATION]");
+  if (iniString(commSection, "can_tx_id").length())
+    activeModule.canTxId = strtoul(iniString(commSection, "can_tx_id").c_str(), nullptr, 0);
+  if (iniString(commSection, "can_rx_id").length())
+    activeModule.canRxId = strtoul(iniString(commSection, "can_rx_id").c_str(), nullptr, 0);
+  activeModule.canExtended = iniFlag(commSection, "can_extended");
+  if (iniFloat(commSection, "kline_baud", 0) > 0)
+    activeModule.klineBaud = (long)iniFloat(commSection, "kline_baud", 10400);
+  if (iniString(commSection, "kline_target").length())
+    activeModule.klineTarget = (uint8_t)strtoul(iniString(commSection, "kline_target").c_str(), nullptr, 0);
+  if (iniString(commSection, "kline_source").length())
+    activeModule.klineSource = (uint8_t)strtoul(iniString(commSection, "kline_source").c_str(), nullptr, 0);
   activeModule.loaded = true;
+  diagApplyModule(); // diag_engine.ino - push addressing/bitrate to the engine
 
   return true;
 }

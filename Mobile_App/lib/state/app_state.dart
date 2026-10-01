@@ -6,6 +6,7 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../ble/tiff_ble_service.dart';
+import '../models/diag_line.dart';
 import '../models/module_profile.dart';
 import '../models/nano_status.dart';
 import '../models/test_result.dart';
@@ -62,9 +63,19 @@ class AppState extends ChangeNotifier {
 
   StreamSubscription<NanoStatus>? _statusSub;
   StreamSubscription<TestResult>? _resultSub;
+  StreamSubscription<DiagLine>? _diagSub;
   StreamSubscription<BluetoothConnectionState>? _connectionSub;
 
+  /// Diagnostics console history (newest last), capped so a long CAN monitor
+  /// session can't grow without bound.
+  final List<DiagLine> diagLog = [];
+  static const int _maxDiagLines = 400;
+
   AppState() {
+    _diagSub = ble.diagStream.listen((l) {
+      _addDiag(l);
+    });
+
     _statusSub = ble.statusStream.listen((s) {
       nanoStatus = s;
       notifyListeners();
@@ -199,6 +210,45 @@ class AppState extends ChangeNotifier {
 
   Future<void> stopTest() => ble.sendCommand('STOP_TEST');
 
+  // --- Diagnostics (CAN / UDS / K-Line / KWP) ---------------------------
+  // The ESP32 owns the transport (ISO-TP, KWP framing, safety whitelists);
+  // the app only sends text commands and shows what comes back. See
+  // Documentation/DIAGNOSTICS.md. The V2 Bluetooth Classic firmware has no
+  // equivalent, so these throw there (the screen shows the message).
+
+  void _addDiag(DiagLine l) {
+    diagLog.add(l);
+    if (diagLog.length > _maxDiagLines) {
+      diagLog.removeRange(0, diagLog.length - _maxDiagLines);
+    }
+    notifyListeners();
+  }
+
+  void clearDiagLog() {
+    diagLog.clear();
+    notifyListeners();
+  }
+
+  /// Sends a diagnostics command and echoes it into the console.
+  Future<void> sendDiag(String command) async {
+    await ble.sendCommand(command);
+    _addDiag(DiagLine(
+        kind: 'tx',
+        ok: true,
+        text: command,
+        time: DateTime.now(),
+        sent: true));
+  }
+
+  /// Stops monitors and drops any queued diagnostics (always allowed, even
+  /// before PIN auth).
+  Future<void> diagStop() => ble.sendCommand('DIAG_STOP');
+
+  /// Relay polarity for all four relays: true = active-low (the default).
+  /// The Nano forces every relay off before and after the change.
+  Future<void> setRelayPolarity({required bool activeLow}) =>
+      ble.sendCommand('SET_POLARITY:${activeLow ? 1 : 0}');
+
   /// Emergency "ALL OUTPUTS OFF" (vision brief §18, §37) — deliberately
   /// distinct from a normal `powerOff()`: sends both `POWER_OFF` (drops the
   /// DUT relay) and `STOP_TEST` (aborts any in-flight channel test), the
@@ -328,6 +378,9 @@ class AppState extends ChangeNotifier {
       canTxId: copy.canTxId,
       canRxId: copy.canRxId,
       klineBaud: copy.klineBaud,
+      canExtended: copy.canExtended,
+      klineTarget: copy.klineTarget,
+      klineSource: copy.klineSource,
       minVoltage: copy.minVoltage,
       maxVoltage: copy.maxVoltage,
       maxCurrent: copy.maxCurrent,
@@ -417,6 +470,7 @@ class AppState extends ChangeNotifier {
   void dispose() {
     _statusSub?.cancel();
     _resultSub?.cancel();
+    _diagSub?.cancel();
     _connectionSub?.cancel();
     ble.dispose();
     super.dispose();

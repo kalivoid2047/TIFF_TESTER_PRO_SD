@@ -15,6 +15,14 @@ class ModuleProfile {
   final String canTxId;
   final String canRxId;
   final String klineBaud;
+
+  /// True if the module uses 29-bit CAN IDs. Written to the SD profile's
+  /// `can_extended=`; the firmware defaults to 11-bit.
+  final bool canExtended;
+
+  /// K-Line ECU/tester addresses as hex (e.g. `33`, `F1`).
+  final String klineTarget;
+  final String klineSource;
   final String minVoltage;
   final String maxVoltage;
   final String maxCurrent;
@@ -46,6 +54,9 @@ class ModuleProfile {
     this.canTxId = '',
     this.canRxId = '',
     this.klineBaud = '',
+    this.canExtended = false,
+    this.klineTarget = '',
+    this.klineSource = '',
     this.minVoltage = '',
     this.maxVoltage = '',
     this.maxCurrent = '',
@@ -72,6 +83,9 @@ class ModuleProfile {
     String? canTxId,
     String? canRxId,
     String? klineBaud,
+    bool? canExtended,
+    String? klineTarget,
+    String? klineSource,
     String? minVoltage,
     String? maxVoltage,
     String? maxCurrent,
@@ -99,6 +113,9 @@ class ModuleProfile {
         canTxId: canTxId ?? this.canTxId,
         canRxId: canRxId ?? this.canRxId,
         klineBaud: klineBaud ?? this.klineBaud,
+        canExtended: canExtended ?? this.canExtended,
+        klineTarget: klineTarget ?? this.klineTarget,
+        klineSource: klineSource ?? this.klineSource,
         minVoltage: minVoltage ?? this.minVoltage,
         maxVoltage: maxVoltage ?? this.maxVoltage,
         maxCurrent: maxCurrent ?? this.maxCurrent,
@@ -135,6 +152,9 @@ class ModuleProfile {
         'canTxId': canTxId,
         'canRxId': canRxId,
         'klineBaud': klineBaud,
+        'canExtended': canExtended,
+        'klineTarget': klineTarget,
+        'klineSource': klineSource,
         'minVoltage': minVoltage,
         'maxVoltage': maxVoltage,
         'maxCurrent': maxCurrent,
@@ -162,6 +182,9 @@ class ModuleProfile {
         canTxId: json['canTxId'] as String? ?? '',
         canRxId: json['canRxId'] as String? ?? '',
         klineBaud: json['klineBaud'] as String? ?? '',
+        canExtended: json['canExtended'] as bool? ?? false,
+        klineTarget: json['klineTarget'] as String? ?? '',
+        klineSource: json['klineSource'] as String? ?? '',
         minVoltage: json['minVoltage'] as String? ?? '',
         maxVoltage: json['maxVoltage'] as String? ?? '',
         maxCurrent: json['maxCurrent'] as String? ?? '',

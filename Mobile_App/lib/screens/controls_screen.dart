@@ -120,6 +120,36 @@ class ControlsScreen extends StatelessWidget {
             ),
           ),
           AppCard(
+            title: 'Relay Polarity',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                StatusRow(
+                  label: 'All four relays',
+                  value: status.relayActiveLow
+                      ? 'ACTIVE-LOW (LOW = ON)'
+                      : 'ACTIVE-HIGH (HIGH = ON)',
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  onPressed: connected
+                      ? () => _confirmPolarity(context, app, !status.relayActiveLow)
+                      : null,
+                  child: Text(status.relayActiveLow
+                      ? 'SWITCH TO ACTIVE-HIGH'
+                      : 'SWITCH TO ACTIVE-LOW'),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Must match your relay module. All relays are forced off '
+                  'before and after the change. Active-low is the firmware '
+                  'default and the safer choice for a pulled-up module.',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          AppCard(
             title: 'MOSFET Outputs',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -159,6 +189,31 @@ class ControlsScreen extends StatelessWidget {
   Future<void> _setRelay(
       BuildContext context, AppState app, int n, bool on) async {
     await _guard(context, () => app.setRelay(n, on));
+  }
+
+  Future<void> _confirmPolarity(
+      BuildContext context, AppState app, bool activeLow) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Change relay polarity?'),
+        content: Text(
+            'Set all relays to ${activeLow ? 'ACTIVE-LOW' : 'ACTIVE-HIGH'}. '
+            'A wrong setting makes relays energize when they should be off. '
+            'Confirm it matches your relay module.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('CANCEL')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('CHANGE')),
+        ],
+      ),
+    );
+    if (ok == true && context.mounted) {
+      await _guard(context, () => app.setRelayPolarity(activeLow: activeLow));
+    }
   }
 
   Future<void> _testRelay(BuildContext context, AppState app, int n) async {

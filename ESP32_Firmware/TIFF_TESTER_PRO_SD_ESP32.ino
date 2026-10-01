@@ -155,9 +155,9 @@ void parseNanoLine(String s) {
 
   // EXT,relay1,relay2,relay3,relay4,tempC
   if (s.startsWith("EXT,")) {
-    String a[6];
+    String a[7];
     int start = 0, n = 0;
-    for (int i = 0; i <= (int)s.length() && n < 6; i++) {
+    for (int i = 0; i <= (int)s.length() && n < 7; i++) {
       if (i == (int)s.length() || s[i] == ',') {
         a[n++] = s.substring(start, i);
         start = i + 1;
@@ -168,6 +168,7 @@ void parseNanoLine(String s) {
       nano.aux[1] = a[3].toInt();
       nano.aux[2] = a[4].toInt();
       nano.tempC = a[5].toFloat();
+      if (n >= 7) nano.relayActiveLow = a[6].toInt() == 1;
     }
     return;
   }
@@ -206,6 +207,18 @@ void parseNanoLine(String s) {
   if (s.startsWith("CONFIG,")) {
     logLine("/LOGS/nano_config.log", s);
     return;
+  }
+}
+
+// Keeps the Nano's dead-man heartbeat flowing (and its replies parsed) from
+// inside long blocking operations - diagnostic bus exchanges, K-Line init.
+// Without it a >2 s exchange would drop the DUT relay.
+void serviceHeartbeat() {
+  readNano();
+  uint32_t now = millis();
+  if (now - lastHeartbeat >= HEARTBEAT_MS) {
+    sendNano("HEARTBEAT");
+    lastHeartbeat = now;
   }
 }
 
@@ -438,7 +451,9 @@ void setup() {
     loadSystemConfig(); // config.ino - falls back to defaults if SD unavailable
   }
 
-  canInit(500000, 8000000);  // can_mcp2515.ino - 500 kbps @ 8 MHz osc, verify for your board
+  // can_mcp2515.ino - bitrate/clock come from /CONFIG.INI (default 500 kbps @ 8 MHz);
+  // set can_clock_mhz=16 or send CAN_INIT:<bitrate>,16 if your board has a 16 MHz crystal.
+  canInit(sysConfig.canBitrate, sysConfig.canClockMhz * 1000000L);
   Serial.println("BOOT: CAN init done.");
   klineInit();                // kline_iso14230.ino
   Serial.println("BOOT: K-Line init done.");
@@ -478,6 +493,9 @@ void loop() {
     bleNotifyStatus(); // ble_service.ino
     lastStatusPoll = now;
   }
+
+  diagLoop();    // diag_engine.ino - queued CAN/UDS/K-Line commands + monitors
+  liveLogLoop(); // live_data.ino - per-test CSV while the DUT relay is on
 
   digitalWrite(STATUS_LED, (now / 500) % 2);
 }

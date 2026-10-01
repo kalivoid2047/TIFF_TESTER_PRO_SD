@@ -10,6 +10,8 @@
 //   [SYSTEM]
 //   ap_password=...
 //   ble_pin=...
+//   can_bitrate=500000        (125000 | 250000 | 500000 | 1000000)
+//   can_clock_mhz=8           (8 or 16 - the MCP2515 board's crystal)
 
 #define CONFIG_PATH "/CONFIG.INI"
 
@@ -40,6 +42,10 @@ void saveSystemConfig() {
   f.println(sysConfig.apPassword);
   f.print("ble_pin=");
   f.println(sysConfig.blePin);
+  f.print("can_bitrate=");
+  f.println(sysConfig.canBitrate);
+  f.print("can_clock_mhz=");
+  f.println(sysConfig.canClockMhz);
   f.close();
 }
 
@@ -64,6 +70,10 @@ void loadSystemConfig() {
   String pin = configLine(data, "ble_pin");
   if (pw.length()) sysConfig.apPassword = pw;
   if (pin.length()) sysConfig.blePin = pin;
+  long br = configLine(data, "can_bitrate").toInt();
+  int clk = configLine(data, "can_clock_mhz").toInt();
+  if (br == 125000 || br == 250000 || br == 500000 || br == 1000000) sysConfig.canBitrate = br;
+  if (clk == 8 || clk == 16) sysConfig.canClockMhz = clk;
   sysConfig.loadedFromSD = true;
 
   bool stillDefault = (sysConfig.apPassword == "tifftester" || sysConfig.blePin == "TIFF2026");
