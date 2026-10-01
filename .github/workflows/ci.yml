@@ -12,7 +12,7 @@ jobs:
     name: Compile ESP32 firmware
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Arduino tooling requires a sketch's folder name to match its .ino
       # filename exactly. This repo organizes firmware by controller role
@@ -70,7 +70,7 @@ jobs:
     name: Compile Nano safety firmware
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Stage sketch for compilation
         run: |
@@ -93,7 +93,7 @@ jobs:
       run:
         working-directory: Mobile_App
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: subosito/flutter-action@v2
         with:
