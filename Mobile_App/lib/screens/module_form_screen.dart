@@ -41,6 +41,8 @@ class _ModuleFormScreenState extends State<ModuleFormScreen> {
   late final TextEditingController _tempMin;
   late final TextEditingController _tempMax;
   late final TextEditingController _relayRequirements;
+  final List<TextEditingController> _relayNames =
+      List.generate(4, (_) => TextEditingController());
   late final TextEditingController _mosfetRequirements;
   late final TextEditingController _testProcedure;
   late final TextEditingController _diagnosticCommands;
@@ -78,6 +80,9 @@ class _ModuleFormScreenState extends State<ModuleFormScreen> {
     _tempMax = TextEditingController(text: m?.tempMax ?? '');
     _relayRequirements =
         TextEditingController(text: m?.relayRequirements ?? '');
+    for (var i = 0; i < 4; i++) {
+      _relayNames[i].text = m?.relayNames[i] ?? '';
+    }
     _mosfetRequirements =
         TextEditingController(text: m?.mosfetRequirements ?? '');
     _testProcedure = TextEditingController(text: m?.testProcedure ?? '');
@@ -110,6 +115,9 @@ class _ModuleFormScreenState extends State<ModuleFormScreen> {
     _tempMin.dispose();
     _tempMax.dispose();
     _relayRequirements.dispose();
+    for (final c in _relayNames) {
+      c.dispose();
+    }
     _mosfetRequirements.dispose();
     _testProcedure.dispose();
     _diagnosticCommands.dispose();
@@ -146,6 +154,7 @@ class _ModuleFormScreenState extends State<ModuleFormScreen> {
         tempMin: _tempMin.text.trim(),
         tempMax: _tempMax.text.trim(),
         relayRequirements: _relayRequirements.text.trim(),
+        relayNames: _relayNames.map((c) => c.text.trim()).toList(),
         mosfetRequirements: _mosfetRequirements.text.trim(),
         testProcedure: _testProcedure.text.trim(),
         diagnosticCommands: _diagnosticCommands.text.trim(),
@@ -177,6 +186,7 @@ class _ModuleFormScreenState extends State<ModuleFormScreen> {
         tempMin: _tempMin.text.trim(),
         tempMax: _tempMax.text.trim(),
         relayRequirements: _relayRequirements.text.trim(),
+        relayNames: _relayNames.map((c) => c.text.trim()).toList(),
         mosfetRequirements: _mosfetRequirements.text.trim(),
         testProcedure: _testProcedure.text.trim(),
         diagnosticCommands: _diagnosticCommands.text.trim(),
@@ -363,6 +373,14 @@ class _ModuleFormScreenState extends State<ModuleFormScreen> {
                   const InputDecoration(labelText: 'Relay requirements'),
             ),
             const SizedBox(height: 12),
+            for (var i = 0; i < 4; i++) ...[
+              TextFormField(
+                controller: _relayNames[i],
+                decoration:
+                    InputDecoration(labelText: 'Relay ${i + 1} name (optional)'),
+              ),
+              const SizedBox(height: 12),
+            ],
             TextFormField(
               controller: _mosfetRequirements,
               decoration:

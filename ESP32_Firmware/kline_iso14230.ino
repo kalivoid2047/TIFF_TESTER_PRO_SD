@@ -26,6 +26,7 @@ String klineError = "";
 // L9637D transceiver can't be probed from here; klineFastInit()/
 // klineSlowInit() are what tell you whether an ECU responds.
 bool klineReady = false;
+int8_t klineSelfTestResult = -1; // -1 not run, 0 failed, 1 passed (most recent check)
 
 void klineInit() {
   KlineSerial.begin(klineBaud, SERIAL_8N1, KLINE_RX, KLINE_TX);
@@ -290,4 +291,41 @@ bool klineReadResponse(uint8_t *buf, uint8_t &len, uint32_t timeoutMs) {
     }
   }
   return len > 0;
+}
+
+// Passive K-Line check: the line idles HIGH (pulled to battery by the bus), so a
+// LOW RX pin means the transceiver is unpowered/missing or the line is shorted
+// or held. Drives nothing, so it is safe with an ECU connected.
+bool klineIdleCheck(String &detail) {
+  bool high = digitalRead(KLINE_RX) == HIGH;
+  detail = high ? "RX idle high" : "RX held low at idle (transceiver unpowered, K-Line shorted or held by a device)";
+  klineSelfTestResult = high ? 1 : 0;
+  return high;
+}
+
+// Active K-Line echo check: drives TX low for ~300 us and confirms RX follows
+// (the L9637D echoes TX onto RX). This briefly pulls the K-Line low, so only run
+// it on request and not while a vehicle/ECU is mid-conversation.
+bool klineEchoCheck(String &detail) {
+  KlineSerial.end();
+  pinMode(KLINE_TX, OUTPUT);
+  pinMode(KLINE_RX, INPUT);
+  digitalWrite(KLINE_TX, HIGH);
+  delay(2);
+  bool idleHigh = digitalRead(KLINE_RX) == HIGH;
+  digitalWrite(KLINE_TX, LOW);
+  delayMicroseconds(300);
+  bool followsLow = digitalRead(KLINE_RX) == LOW;
+  digitalWrite(KLINE_TX, HIGH);
+  delay(2);
+  bool highAgain = digitalRead(KLINE_RX) == HIGH;
+  KlineSerial.begin(klineBaud, SERIAL_8N1, KLINE_RX, KLINE_TX);
+
+  bool ok = idleHigh && followsLow && highAgain;
+  if (ok) detail = "TX echoes on RX";
+  else if (!idleHigh) detail = "RX not high with TX high";
+  else if (!followsLow) detail = "RX did not follow TX low (transceiver unpowered or not wired)";
+  else detail = "RX did not return high";
+  klineSelfTestResult = ok ? 1 : 0;
+  return ok;
 }

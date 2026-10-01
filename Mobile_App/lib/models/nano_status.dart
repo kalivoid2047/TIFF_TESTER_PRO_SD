@@ -43,6 +43,17 @@ class NanoStatus {
   /// app can only show the last command it sent.
   final bool relaysReported;
 
+  /// Active protection limits reported by the Nano: maximum DUT current (A),
+  /// over-temperature trip (degC, 0 = disabled) and aux relay auto-off
+  /// (seconds, 0 = none).
+  final double limMaxA;
+  final double limTempC;
+  final int auxTimeoutS;
+
+  /// Boot/requested self-test results: -1 not run, 0 failed, 1 passed.
+  final int canSelfTest;
+  final int klineSelfTest;
+
   const NanoStatus({
     required this.relay,
     required this.fault,
@@ -62,6 +73,11 @@ class NanoStatus {
     this.relayActiveLow = true,
     this.tempReported = true,
     this.relaysReported = true,
+    this.limMaxA = 5.0,
+    this.limTempC = 0,
+    this.auxTimeoutS = 0,
+    this.canSelfTest = -1,
+    this.klineSelfTest = -1,
   });
 
   const NanoStatus.unknown()
@@ -82,7 +98,12 @@ class NanoStatus {
         systemReady = false,
         relayActiveLow = true,
         tempReported = true,
-        relaysReported = true;
+        relaysReported = true,
+        limMaxA = 5.0,
+        limTempC = 0,
+        auxTimeoutS = 0,
+        canSelfTest = -1,
+        klineSelfTest = -1;
 
   factory NanoStatus.fromJson(Map<String, dynamic> json) {
     return NanoStatus(
@@ -102,6 +123,11 @@ class NanoStatus {
       inaReady: (json['ina'] ?? 0) == 1,
       systemReady: (json['sys'] ?? 0) == 1,
       relayActiveLow: (json['pol'] ?? 1) == 1,
+      limMaxA: (json['lim_a'] as num? ?? 5.0).toDouble(),
+      limTempC: (json['lim_t'] as num? ?? 0).toDouble(),
+      auxTimeoutS: (json['aux_to'] as num? ?? 0).toInt(),
+      canSelfTest: (json['can_st'] as num? ?? -1).toInt(),
+      klineSelfTest: (json['kline_st'] as num? ?? -1).toInt(),
     );
   }
 

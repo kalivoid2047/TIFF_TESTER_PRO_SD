@@ -101,6 +101,20 @@ bench without 12 V). All relays drop on e-stop, any fault, heartbeat loss,
 its test reports `PASS`/`FAIL`; relays 2-4 report `ACTUATED` (marked pass,
 with a "confirm visually" note) because nothing can observe them.
 
+#### Protection, hold-to-energise and self-test commands
+
+```
+RELAY_PULSE:<n>,<ms>     aux relay n (2-4) on for ms (50-5000); the Nano drops it itself when pulses stop
+SET_TEMP_LIMIT:<degC>    over-temperature trip, 0 = off, else 30-150 (saved on the Nano)
+SET_AUX_TIMEOUT:<s>      aux relay auto-off, 0 = none, max 3600 (saved on the Nano)
+SELFTEST[:KLINE_ECHO]    CAN loopback + K-Line idle check (+ active K-Line echo); output as diag:selftest lines
+```
+
+On module select (and every 5 s while one is active) the ESP32 sends the
+module's voltage/current window to the Nano (`SET_LIMITS`). The Nano clamps it:
+a module can only **tighten** the hard caps (11-15 V supply, 5 A), never loosen
+them. Limits are RAM-only on the Nano, which is why they are re-sent.
+
 #### Polarity and diagnostics commands
 
 ```
@@ -144,6 +158,9 @@ Nano. `pos_pct` is a raw 0-3.3 V reading of ESP32 GPIO33 (0 when nothing is
 connected). `kline` means the UART is open, not that an ECU answered.
 `sys` = Nano online + watchdog active + no fault + e-stop released.
 `pol` = 1 when the relays are configured active-low.
+`lim_a`, `lim_t`, `aux_to` = active current limit (A), over-temperature trip
+(degC, 0 = off) and aux auto-off (s, 0 = none). `can_st`, `kline_st` =
+self-test result (-1 not run, 0 failed, 1 passed).
 
 ## 2. Wi-Fi / REST interface (existing, retained)
 
@@ -246,6 +263,20 @@ Extra status lines (the `STATUS` line itself is unchanged):
 EXT,<relay1>,<relay2>,<relay3>,<relay4>,<tempC>,<activeLow>
 RELAY_TEST,<n>,<RUNNING|DONE|ABORTED>,<cycle>,<PASS|FAIL|ACTUATED|>,<detail>
 ```
+
+### 4.3b Protection / hold / self-limits (implemented, Nano)
+```
+SET_LIMITS,<minV>,<maxV>,<maxA>    tighten only (clamped to the hard caps)
+RESET_LIMITS
+SET_TEMP_LIMIT,<degC>              0 = off; saved to EEPROM
+SET_AUX_TIMEOUT,<seconds>          0 = none; saved to EEPROM
+RELAY_PULSE,<n>,<ms>               momentary aux relay, re-send to hold
+```
+Extra status line, sent with every `STATUS`:
+```
+LIMITS,<minV>,<maxV>,<maxA>,<maxTempC>,<auxTimeoutS>
+```
+A trip caused by the temperature limit reports fault text `OVERTEMPERATURE`.
 
 ### 4.4 Framing/robustness notes (apply to both existing and new lines)
 - Existing line-based, newline-terminated, comma-separated format is

@@ -28,6 +28,11 @@
     RELAY,<n>,<0|1>                      switch relay n (1=DUT, 2-4=auxiliary)
     RELAY_TEST,<n>                       cycle relay n ON/OFF 3x and report
     RELAY_TEST_STOP                      abort a running relay test
+    RELAY_PULSE,<n>,<ms>                 aux relay n (2-4) on for ms (50-5000); re-send to hold
+    SET_LIMITS,<minV>,<maxV>,<maxA>      TIGHTEN the protection window (never loosen past the hard caps)
+    RESET_LIMITS                         back to the hard caps
+    SET_TEMP_LIMIT,<degC>                over-temperature trip (0 = disabled, saved to EEPROM)
+    SET_AUX_TIMEOUT,<seconds>            auto-off for aux relays 2-4 (0 = none, saved to EEPROM)
 
   Relays: 1 = DUT relay (D4, full safetyOK() gating, unchanged behavior),
   2-4 = auxiliary bench relays (D5/D7/D8). Auxiliary relays follow the same
@@ -36,7 +41,9 @@
   relay polarity setting. Only relay 1 has electrical feedback (DUT voltage)
   so only its RELAY_TEST can report PASS/FAIL; relays 2-4 report ACTUATED
   (commanded cycles completed, verify by click/load) because nothing on
-  this board can observe them.
+  this board can observe them - unless you wire per-relay feedback inputs
+  and set AUX_FEEDBACK_ENABLED 1 (see below), in which case relays 2-4 also
+  report PASS/FAIL.
 
   IMPORTANT re: INJ_TEST/COIL_TEST — there is no injector/coil driver
   hardware on this board yet (Documentation/ROADMAP.md Phase 1), so these
@@ -72,6 +79,15 @@
 #define AUX_RELAY4_PIN   8
 #define STATUS_LED       13
 
+// Optional per-relay feedback for aux relays 2-4. Wire a sense signal that
+// follows the relay (e.g. an auxiliary contact, or an optocoupler across the
+// load) to these pins and set AUX_FEEDBACK_ENABLED to 1. With it disabled
+// (default) nothing on this board can observe relays 2-4, so RELAY_TEST can
+// only report ACTUATED, never PASS/FAIL.
+#define AUX_FEEDBACK_ENABLED  0
+#define AUX_FB_ACTIVE_LOW     1   // pin reads LOW when the sense contact is closed
+const uint8_t AUX_FB_PINS[3] = {2, 11, 12};
+
 #define DUT_VOLT_PIN     A0
 #define SUPPLY_VOLT_PIN  A1
 #define CURRENT_PIN      A2
@@ -86,6 +102,16 @@ const float MIN_SUPPLY_V = 11.0;
 const float MAX_SUPPLY_V = 15.0;
 const float MAX_DUT_V    = 15.0;
 const float MAX_CURRENT_A = 5.0;
+
+// Runtime limits. The consts above are the HARD caps; a module profile may only
+// tighten them (SET_LIMITS clamps into these ranges), never loosen. They are
+// RAM-only and revert to the hard caps on reset, which is the permissive
+// direction - the ESP32 re-sends the active module's limits periodically.
+float limMinSupplyV = MIN_SUPPLY_V;
+float limMaxSupplyV = MAX_SUPPLY_V;
+float limMaxCurrentA = MAX_CURRENT_A;
+float limMaxTempC = 0;        // over-temperature trip; 0 = disabled (EEPROM-backed)
+uint16_t auxTimeoutS = 0;     // aux relay auto-off; 0 = none (EEPROM-backed)
 
 // Hard caps for INJ_TEST/COIL_TEST, enforced regardless of what the ESP32
 // requests (Documentation/API_PROTOCOL_SPEC.md §4.3, SRS FR-INJ-4/FR-COIL-4).
@@ -116,6 +142,13 @@ const float CURRENT_V_PER_A = 0.185; // ACS712 5A: ~185 mV/A
 #define EE_CUR_SCALE_ADDR       13  // float, 4 bytes
 #define EE_RELAY_POLARITY_ADDR  17  // byte
 
+// Protection settings (separate magic from the calibration block above, so an
+// older EEPROM image without them is left untouched).
+#define EE_SETTINGS_MAGIC_ADDR  24
+#define EE_SETTINGS_MAGIC_VALUE 0x5C
+#define EE_TEMP_LIMIT_ADDR      25  // float, 4 bytes
+#define EE_AUX_TIMEOUT_ADDR     29  // uint16, 2 bytes
+
 float supplyDividerCal = SUPPLY_DIVIDER;
 float dutDividerCal = DUT_DIVIDER;
 float currentZeroCal = CURRENT_ZERO_V;
@@ -144,6 +177,23 @@ void loadCalibration() {
     relayActiveLow = RELAY_DEFAULT_ACTIVE_LOW;
     calibrated = false;
   }
+}
+
+void loadSettings() {
+  if (EEPROM.read(EE_SETTINGS_MAGIC_ADDR) != EE_SETTINGS_MAGIC_VALUE) return;
+  float t;
+  uint16_t a;
+  EEPROM.get(EE_TEMP_LIMIT_ADDR, t);
+  EEPROM.get(EE_AUX_TIMEOUT_ADDR, a);
+  // Reject garbage (NaN/out of range) rather than trusting it.
+  if (t == t && t >= 0 && t <= 150) limMaxTempC = t;
+  if (a <= 3600) auxTimeoutS = a;
+}
+
+void saveSettings() {
+  EEPROM.put(EE_TEMP_LIMIT_ADDR, limMaxTempC);
+  EEPROM.put(EE_AUX_TIMEOUT_ADDR, auxTimeoutS);
+  EEPROM.write(EE_SETTINGS_MAGIC_ADDR, EE_SETTINGS_MAGIC_VALUE);
 }
 
 void saveCalibration() {
@@ -186,6 +236,7 @@ unsigned long lastTestStatus = 0;
 // ---------- Auxiliary relays (2-4) and relay test ----------
 const uint8_t AUX_RELAY_PINS[3] = {AUX_RELAY2_PIN, AUX_RELAY3_PIN, AUX_RELAY4_PIN};
 bool auxOn[3] = {false, false, false};
+unsigned long auxOffAt[3] = {0, 0, 0}; // auto-off deadline (millis), 0 = none
 float tempC = 0;
 
 const uint8_t RELAY_TEST_CYCLES = 3;
@@ -229,6 +280,19 @@ void writeAuxPhysical(uint8_t idx, bool energize) {
   bool pinHigh = relayActiveLow ? !energize : energize;
   digitalWrite(AUX_RELAY_PINS[idx], pinHigh ? HIGH : LOW);
   auxOn[idx] = energize;
+  if (!energize) auxOffAt[idx] = 0;
+}
+
+// Is the sense input for aux relay idx (0..2 = relays 2..4) reporting "on"?
+// Only meaningful when AUX_FEEDBACK_ENABLED is 1.
+bool auxFeedbackOn(uint8_t idx) {
+#if AUX_FEEDBACK_ENABLED
+  bool low = digitalRead(AUX_FB_PINS[idx]) == LOW;
+  return AUX_FB_ACTIVE_LOW ? low : !low;
+#else
+  (void)idx;
+  return false;
+#endif
 }
 
 void auxAllOff() {
@@ -261,18 +325,19 @@ bool safetyOK() {
   supplyV = readSupplyVoltage();
   dutV = readDutVoltage();
   currentA = readCurrent();
+  tempC = adcVoltage(TEMP_PIN) * TEMP_C_PER_V;
 
   if (digitalRead(ESTOP_PIN) == LOW) {
     relayOff("ESTOP");
     return false;
   }
 
-  if (supplyV < MIN_SUPPLY_V) {
+  if (supplyV < limMinSupplyV) {
     relayOff("UNDERVOLTAGE");
     return false;
   }
 
-  if (supplyV > MAX_SUPPLY_V) {
+  if (supplyV > limMaxSupplyV) {
     relayOff("OVERVOLTAGE");
     return false;
   }
@@ -282,8 +347,13 @@ bool safetyOK() {
     return false;
   }
 
-  if (currentA > MAX_CURRENT_A) {
+  if (currentA > limMaxCurrentA) {
     relayOff("OVERCURRENT");
+    return false;
+  }
+
+  if (limMaxTempC > 0 && tempC > limMaxTempC) {
+    relayOff("OVERTEMPERATURE");
     return false;
   }
 
@@ -339,7 +409,7 @@ void abortRelayTest(const char *detail) {
 bool auxMaySwitchOn() {
   if (digitalRead(ESTOP_PIN) == LOW) { relayOff("ESTOP"); return false; }
   if (fault) return false;
-  if (supplyV > MAX_SUPPLY_V) { relayOff("OVERVOLTAGE"); return false; }
+  if (supplyV > limMaxSupplyV) { relayOff("OVERVOLTAGE"); return false; }
   return true;
 }
 
@@ -357,6 +427,8 @@ bool setRelay(uint8_t n, bool on) {
   if (n < 2 || n > 4) return false;
   if (on && !auxMaySwitchOn()) return false;
   writeAuxPhysical(n - 2, on);
+  // Optional auto-off so a forgotten aux relay can't stay on indefinitely.
+  auxOffAt[n - 2] = (on && auxTimeoutS) ? ((millis() + auxTimeoutS * 1000UL) | 1) : 0;
   return true;
 }
 
@@ -405,6 +477,19 @@ void runRelayTest(unsigned long now) {
 
   if (now - relayTestStepStart < RELAY_TEST_STEP_MS) return;
 
+  // End of step: aux relays use their feedback input when one is wired.
+  if (AUX_FEEDBACK_ENABLED && relayTestRelay >= 2) {
+    bool fb = auxFeedbackOn(relayTestRelay - 2);
+    if (onPhase && !fb && !relayTestFailed) {
+      relayTestFailed = true;
+      relayTestDetail = "NO_FEEDBACK_WHEN_ON";
+    }
+    if (!onPhase && fb && !relayTestFailed) {
+      relayTestFailed = true;
+      relayTestDetail = "FEEDBACK_WHEN_OFF";
+    }
+  }
+
   // End of step: for the DUT relay, use DUT voltage as feedback.
   if (relayTestRelay == 1) {
     if (onPhase && dutV < 0.5f * supplyV && !relayTestFailed) {
@@ -423,7 +508,8 @@ void runRelayTest(unsigned long now) {
   if (relayTestStep >= RELAY_TEST_CYCLES * 2) {
     relayTestActive = false;
     setRelay(relayTestRelay, false);
-    const char *result = relayTestRelay == 1 ? (relayTestFailed ? "FAIL" : "PASS") : "ACTUATED";
+    bool hasFeedback = relayTestRelay == 1 || (AUX_FEEDBACK_ENABLED && relayTestRelay >= 2);
+    const char *result = hasFeedback ? (relayTestFailed ? "FAIL" : "PASS") : "ACTUATED";
     sendRelayTest("DONE", RELAY_TEST_CYCLES, result, relayTestDetail.c_str());
   } else if (relayTestStep % 2 == 0) {
     sendRelayTest("RUNNING", relayTestStep / 2, "", "");
@@ -510,6 +596,20 @@ void sendExtStatus() {
   Serial.println(relayActiveLow ? 1 : 0);
 }
 
+// LIMITS,<minV>,<maxV>,<maxA>,<maxTempC>,<auxTimeoutS>
+void sendLimits() {
+  Serial.print("LIMITS,");
+  Serial.print(limMinSupplyV, 2);
+  Serial.print(",");
+  Serial.print(limMaxSupplyV, 2);
+  Serial.print(",");
+  Serial.print(limMaxCurrentA, 2);
+  Serial.print(",");
+  Serial.print(limMaxTempC, 1);
+  Serial.print(",");
+  Serial.println(auxTimeoutS);
+}
+
 void sendConfig() {
   Serial.print("CONFIG,");
   Serial.print(supplyDividerCal, 4);
@@ -558,6 +658,85 @@ void processCommand(String cmd) {
   if (cmd == "STATUS") {
     sendStatus();
     sendExtStatus();
+    sendLimits();
+    return;
+  }
+
+  // SET_LIMITS,<minV>,<maxV>,<maxA> - a module profile may only TIGHTEN the
+  // protection window: values are clamped into the hard caps, never beyond.
+  if (cmd.startsWith("SET_LIMITS,")) {
+    lastHeartbeat = millis();
+    String p = cmd.substring(11);
+    int c1 = p.indexOf(',');
+    int c2 = c1 < 0 ? -1 : p.indexOf(',', c1 + 1);
+    if (c2 >= 0) {
+      float mn = p.substring(0, c1).toFloat();
+      float mx = p.substring(c1 + 1, c2).toFloat();
+      float ma = p.substring(c2 + 1).toFloat();
+      if (mn < MIN_SUPPLY_V) mn = MIN_SUPPLY_V;
+      if (mx > MAX_SUPPLY_V) mx = MAX_SUPPLY_V;
+      if (ma > MAX_CURRENT_A) ma = MAX_CURRENT_A;
+      if (mn < mx && ma >= 0.1) { // reject nonsense instead of applying it
+        limMinSupplyV = mn;
+        limMaxSupplyV = mx;
+        limMaxCurrentA = ma;
+      }
+    }
+    sendLimits();
+    return;
+  }
+
+  if (cmd == "RESET_LIMITS") {
+    lastHeartbeat = millis();
+    limMinSupplyV = MIN_SUPPLY_V;
+    limMaxSupplyV = MAX_SUPPLY_V;
+    limMaxCurrentA = MAX_CURRENT_A;
+    sendLimits();
+    return;
+  }
+
+  // SET_TEMP_LIMIT,<degC>: 0 disables, otherwise 30..150. Saved to EEPROM.
+  if (cmd.startsWith("SET_TEMP_LIMIT,")) {
+    lastHeartbeat = millis();
+    float t = cmd.substring(15).toFloat();
+    if (t <= 0) t = 0;
+    else if (t < 30) t = 30;
+    else if (t > 150) t = 150;
+    limMaxTempC = t;
+    saveSettings();
+    sendLimits();
+    return;
+  }
+
+  // SET_AUX_TIMEOUT,<seconds>: 0 = none, else 1..3600. Applies to relays
+  // switched on afterwards. Saved to EEPROM.
+  if (cmd.startsWith("SET_AUX_TIMEOUT,")) {
+    lastHeartbeat = millis();
+    long sec = cmd.substring(16).toInt();
+    if (sec < 0) sec = 0;
+    if (sec > 3600) sec = 3600;
+    auxTimeoutS = (uint16_t)sec;
+    saveSettings();
+    sendLimits();
+    return;
+  }
+
+  // RELAY_PULSE,<n>,<ms>: momentary "hold to energise" for aux relays 2-4. The
+  // relay drops by itself when the deadline passes, so a lost "release"
+  // message can't leave it on; the app re-sends while the button is held.
+  if (cmd.startsWith("RELAY_PULSE,")) {
+    lastHeartbeat = millis();
+    String p = cmd.substring(12);
+    int c = p.indexOf(',');
+    if (c < 0) return;
+    int n = p.substring(0, c).toInt();
+    long ms = p.substring(c + 1).toInt();
+    if (relayTestActive || n < 2 || n > 4) return;
+    if (ms < 50) ms = 50;
+    if (ms > 5000) ms = 5000;
+    if (!auxMaySwitchOn()) return;
+    writeAuxPhysical(n - 2, true);
+    auxOffAt[n - 2] = (millis() + (unsigned long)ms) | 1;
     return;
   }
 
@@ -726,6 +905,7 @@ void setup() {
   // Load calibration/polarity before touching the relay pin, so the very
   // first output write already respects whatever polarity was last saved.
   loadCalibration();
+  loadSettings();
 
   // Ensure outputs are safe before enabling anything.
   digitalWrite(RELAY_PIN, relayActiveLow ? HIGH : LOW); // de-energized, pre-pinMode
@@ -738,6 +918,9 @@ void setup() {
   }
 
   pinMode(ESTOP_PIN, INPUT_PULLUP);
+#if AUX_FEEDBACK_ENABLED
+  for (uint8_t i = 0; i < 3; i++) pinMode(AUX_FB_PINS[i], INPUT_PULLUP);
+#endif
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(STATUS_LED, OUTPUT);
 
@@ -766,6 +949,20 @@ void loop() {
   if (relayOn) {
     if (!safetyOK()) {
       relayOff(faultText.c_str());
+    }
+  }
+
+  // Over-temperature covers aux-only operation too (safetyOK() only runs for
+  // the DUT relay / test windows).
+  if (limMaxTempC > 0 && tempC > limMaxTempC && (relayOn || auxOn[0] || auxOn[1] || auxOn[2])) {
+    relayOff("OVERTEMPERATURE");
+  }
+
+  // Aux relay auto-off / pulse expiry.
+  for (uint8_t i = 0; i < 3; i++) {
+    if (auxOn[i] && auxOffAt[i] && (long)(now - auxOffAt[i]) >= 0) {
+      writeAuxPhysical(i, false);
+      sendExtStatus(); // let the ESP32/app see the release promptly
     }
   }
 
@@ -802,6 +999,7 @@ void loop() {
   if (now - lastStatus >= STATUS_INTERVAL_MS) {
     sendStatus();
     sendExtStatus();
+    sendLimits();
     lastStatus = now;
   }
 

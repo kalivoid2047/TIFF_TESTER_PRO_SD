@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
+import '../screens/live_graph_screen.dart';
 import 'app_card.dart';
 
 /// Live data preview: supply/DUT voltage, DUT current, position,
@@ -46,14 +47,30 @@ class LiveDataCard extends StatelessWidget {
       systemColor = AppColors.warning;
     }
 
-    Widget ready(String label, bool ok, {String bad = 'NOT READY'}) =>
-        StatusRow(
-          label: label,
-          value: !connected ? '--' : (ok ? 'READY' : bad),
-          valueColor: !connected
-              ? AppColors.textSecondary
-              : (ok ? AppColors.success : AppColors.warning),
-        );
+    // selfTest: -1 not run, 0 failed, 1 passed. A failed self-test overrides
+    // READY, because the flag alone only means "initialised".
+    Widget ready(String label, bool ok,
+        {String bad = 'NOT READY', int selfTest = -1}) {
+      String value;
+      Color color;
+      if (!connected) {
+        value = '--';
+        color = AppColors.textSecondary;
+      } else if (!ok) {
+        value = bad;
+        color = AppColors.warning;
+      } else if (selfTest == 0) {
+        value = 'SELF-TEST FAILED';
+        color = AppColors.danger;
+      } else if (selfTest == 1) {
+        value = 'READY ✓';
+        color = AppColors.success;
+      } else {
+        value = 'READY';
+        color = AppColors.success;
+      }
+      return StatusRow(label: label, value: value, valueColor: color);
+    }
 
     return AppCard(
       title: 'Live Data',
@@ -69,11 +86,18 @@ class LiveDataCard extends StatelessWidget {
               label: 'Temperature',
               value: val(s.tempC, 1, '°C', reported: s.tempReported)),
           const Divider(height: 24),
-          ready('CAN', s.canReady),
-          ready('K-LINE', s.klineReady),
+          ready('CAN', s.canReady, selfTest: s.canSelfTest),
+          ready('K-LINE', s.klineReady, selfTest: s.klineSelfTest),
           ready('INA219', s.inaReady, bad: 'NOT FOUND'),
           StatusRow(
               label: 'SYSTEM', value: system, valueColor: systemColor),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.show_chart),
+            label: const Text('VIEW GRAPH'),
+            onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const LiveGraphScreen())),
+          ),
         ],
       ),
     );

@@ -281,6 +281,22 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
 
   List<Widget> _canTab(bool connected) => [
         AppCard(
+          title: 'Self-test',
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            _row([
+              _btn('RUN SELF-TEST',
+                  connected ? () => _runSelfTest(klineEcho: false) : null),
+              _btn('+ K-LINE ECHO',
+                  connected ? () => _runSelfTest(klineEcho: true) : null),
+            ]),
+            _note('CAN: internal loopback (nothing goes on the bus). K-Line: '
+                'idle level; the echo test also pulls the K-Line low for a '
+                'moment, so not while an ECU is mid-conversation. Neither '
+                'tests the CAN transceiver or bus wiring. The same checks run '
+                'at boot.'),
+          ]),
+        ),
+        AppCard(
           title: 'CAN bus',
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             _row([
@@ -368,6 +384,16 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
           ]),
         ),
       ];
+
+  Future<void> _runSelfTest({required bool klineEcho}) async {
+    try {
+      await _app.runSelfTest(klineEcho: klineEcho);
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e is StateError ? e.message : 'Failed to reach device';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    }
+  }
 
   Future<void> _sendRawCan() async {
     final id = _hex(_rawCanId);

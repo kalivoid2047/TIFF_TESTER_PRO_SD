@@ -50,6 +50,7 @@ KWP framing/echo stripping, then returns text.
 | `KLINE_INIT` / `KLINE_5BAUD_INIT` | fast init / ISO 9141 5-baud init |
 | `KLINE_MONITOR:<0\|1>` | raw RX byte monitor |
 | `KWP_REQUEST:<hex>` / `KWP_START_SESSION` / `KWP_READ_DTC` / `KWP_CLEAR_DTC` / `KWP_TESTER_PRESENT` | KWP2000 |
+| `SELFTEST[:KLINE_ECHO]` | CAN loopback + K-Line idle-level check; `KLINE_ECHO` also pulses the K-Line low |
 | `DIAG_STOP` | stop monitors, drop queue |
 
 ### V2 Bluetooth Classic firmware
@@ -108,6 +109,32 @@ Selecting a module loads these into the engine; a CAN module's bitrate is
 applied at runtime (not saved as the default). The app's Module database
 carries the same fields and pre-fills the Diagnostics screen for the active
 module.
+
+## Self-test
+
+- **CAN loopback:** uses the MCP2515's internal loopback mode - a frame is sent
+  and received inside the chip. It verifies SPI, the controller and its
+  bit-timing setup and puts **nothing on the bus**, so it is safe with an ECU
+  attached. It does *not* test the CAN transceiver or the bus wiring.
+- **K-Line idle level:** passive - the line idles high, so a low RX pin means the
+  transceiver is unpowered/missing or the line is shorted or held.
+- **K-Line echo (`SELFTEST:KLINE_ECHO`):** drives TX low for ~300 us and checks RX
+  follows (the L9637D echoes TX). It briefly pulls the K-Line low, so it only
+  runs on request, never at boot, and not while an ECU is mid-conversation.
+
+The CAN loopback and the passive K-Line check run at boot (results to the
+serial console and `/LOGS/system.log`). The Live Data card shows `READY ✓` after
+a passed self-test and `SELF-TEST FAILED` if one failed, because the plain
+READY flag only means "initialised".
+
+## Live graph, CSV and reports
+
+The app keeps the last ~600 status readings (about 5 min) for the session. Live
+Data > VIEW GRAPH draws supply/DUT voltage, current, power, position and
+temperature, and copies the data as CSV (same columns as the tester's
+`TEST_*.CSV`). The PDF report gains a "Live data" min/average/max table built
+from the same readings. Temperature is left out when the firmware does not
+report real degrees C (V2).
 
 ## Logs
 

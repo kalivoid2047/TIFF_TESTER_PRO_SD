@@ -39,6 +39,18 @@ A1  = Supply voltage
 A2  = Current sensor
 A3  = Temperature (read as an LM35: 10 mV/degC; change TEMP_C_PER_V for other sensors)
 
+Optional feedback for aux relays 2-4 (Nano D2, D11, D12): wire a signal that
+follows each relay (an auxiliary contact, or an optocoupler across the load)
+to these pins, then set AUX_FEEDBACK_ENABLED to 1 in the Nano sketch (inputs
+use INPUT_PULLUP; AUX_FB_ACTIVE_LOW selects the sense polarity). With it on,
+RELAY_TEST for relays 2-4 reports real PASS/FAIL; with it off (default) it can
+only report ACTUATED because nothing observes those relays.
+
+Over-temperature trip: A3 is read as an LM35 (10 mV/degC). The trip is off by
+default and is enabled from the app (Controls > Protection) or with
+SET_TEMP_LIMIT. Only enable it after wiring a real sensor to A3 - an unconnected
+input gives meaningless readings and could trip (or fail to trip) wrongly.
+
 Relays 1-4 share the one polarity setting (SET_RELAY_POLARITY) and are all
 driven OFF at boot, on e-stop, on any fault, on heartbeat loss and on
 POWER_OFF. Drive relay coils through the module's own driver/opto stage - do

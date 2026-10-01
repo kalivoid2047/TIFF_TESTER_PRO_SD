@@ -93,6 +93,32 @@ class BleCommandCallbacks : public BLECharacteristicCallbacks {
       return;
     }
 
+    // RELAY_PULSE:<n>,<ms> - momentary "hold to energise" for aux relays 2-4.
+    // The Nano drops the relay itself when the pulse expires, so a lost
+    // release can't leave it on; the app re-sends while the button is held.
+    if (cmd.startsWith("RELAY_PULSE:")) {
+      String p = cmd.substring(12);
+      int c = p.indexOf(',');
+      int n = p.substring(0, c < 0 ? 0 : c).toInt();
+      int ms = c < 0 ? 0 : p.substring(c + 1).toInt();
+      if (n >= 2 && n <= 4 && ms >= 50 && ms <= 5000)
+        sendNano("RELAY_PULSE," + String(n) + "," + String(ms));
+      return;
+    }
+
+    // SET_TEMP_LIMIT:<degC> (0 = off, 30-150) and SET_AUX_TIMEOUT:<seconds>
+    // (0 = off, max 3600). Both are range-checked again by the Nano and saved there.
+    if (cmd.startsWith("SET_TEMP_LIMIT:")) {
+      int t = cmd.substring(15).toInt();
+      if (t == 0 || (t >= 30 && t <= 150)) sendNano("SET_TEMP_LIMIT," + String(t));
+      return;
+    }
+    if (cmd.startsWith("SET_AUX_TIMEOUT:")) {
+      int sec = cmd.substring(16).toInt();
+      if (sec >= 0 && sec <= 3600) sendNano("SET_AUX_TIMEOUT," + String(sec));
+      return;
+    }
+
     // CAN / UDS / K-Line / KWP diagnostics (diag_engine.ino). These are only
     // queued here; they cannot switch relays (see Documentation/DIAGNOSTICS.md).
     if (diagHandleCommand(cmd)) return;

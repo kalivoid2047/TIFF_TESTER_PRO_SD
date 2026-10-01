@@ -173,6 +173,26 @@ void parseNanoLine(String s) {
     return;
   }
 
+  // LIMITS,minV,maxV,maxA,maxTempC,auxTimeoutS
+  if (s.startsWith("LIMITS,")) {
+    String a[6];
+    int start = 0, n = 0;
+    for (int i = 0; i <= (int)s.length() && n < 6; i++) {
+      if (i == (int)s.length() || s[i] == ',') {
+        a[n++] = s.substring(start, i);
+        start = i + 1;
+      }
+    }
+    if (n >= 6) {
+      nano.limMinV = a[1].toFloat();
+      nano.limMaxV = a[2].toFloat();
+      nano.limMaxA = a[3].toFloat();
+      nano.limTempC = a[4].toFloat();
+      nano.auxTimeoutS = a[5].toInt();
+    }
+    return;
+  }
+
   // RELAY_TEST,relay,status,cycle,result,detail - only the final line
   // (DONE/ABORTED) becomes a result; RUNNING lines are progress only.
   if (s.startsWith("RELAY_TEST,")) {
@@ -459,6 +479,7 @@ void setup() {
   Serial.println("BOOT: K-Line init done.");
   inaInit();                  // ina219.ino - optional, reports NOT FOUND if absent
   pinMode(POSITION_PIN, INPUT_PULLDOWN);
+  bootSelfTest();             // diag_engine.ino - CAN loopback + K-Line idle-level check
 
   WiFi.mode(WIFI_AP);
   bool apOk = WiFi.softAP("TIFF_TESTER", sysConfig.apPassword.c_str());
@@ -492,6 +513,14 @@ void loop() {
     inaPoll(); // ina219.ino
     bleNotifyStatus(); // ble_service.ino
     lastStatusPoll = now;
+  }
+
+  // Re-send the active module's protection limits so a Nano that reset (and
+  // fell back to its hard caps) picks them up again. Idempotent and cheap.
+  static uint32_t lastLimitPush = 0;
+  if (now - lastLimitPush >= 5000) {
+    lastLimitPush = now;
+    pushModuleLimits(); // test_orchestrator.ino
   }
 
   diagLoop();    // diag_engine.ino - queued CAN/UDS/K-Line commands + monitors

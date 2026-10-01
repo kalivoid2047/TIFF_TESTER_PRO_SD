@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -28,6 +30,7 @@ class ControlsScreen extends StatelessWidget {
     final relayStates = app.relayStates;
     // V2: Nano relays 1-4 (command-only). BLE firmware: DUT relay above + aux 2-4.
     final firstAuxRelay = app.isClassic ? 1 : 2;
+    final relayNames = app.relayNames;
 
     return Scaffold(
       appBar: AppBar(title: const Text('CONTROLS')),
@@ -118,6 +121,10 @@ class ControlsScreen extends StatelessWidget {
                 for (var n = firstAuxRelay; n <= 4; n++)
                   _RelayRow(
                     n: n,
+                    name: relayNames[n - 1],
+                    holdEnabled: extended,
+                    onHold: () => _pulseRelay(app, n),
+                    onRelease: () => _releaseRelay(app, n),
                     on: relayStates[n - 1],
                     enabled: connected,
                     testEnabled: extended,
@@ -163,6 +170,45 @@ class ControlsScreen extends StatelessWidget {
                   'Must match your relay module. All relays are forced off '
                   'before and after the change. Active-low is the firmware '
                   'default and the safer choice for a pulled-up module.',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          AppCard(
+            title: 'Protection',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                StatusRow(
+                    label: 'Current limit',
+                    value: extended
+                        ? '${status.limMaxA.toStringAsFixed(1)} A'
+                        : 'n/a'),
+                _limitDropdown(
+                  label: 'Over-temperature trip',
+                  enabled: extended,
+                  value: status.limTempC.round(),
+                  options: const [0, 50, 60, 70, 85, 100],
+                  format: (v) => v == 0 ? 'Off' : '$v °C',
+                  onChanged: (v) => _guard(context, () => app.setTempLimit(v)),
+                ),
+                _limitDropdown(
+                  label: 'Aux relay auto-off',
+                  enabled: extended,
+                  value: status.auxTimeoutS,
+                  options: const [0, 10, 30, 60, 300],
+                  format: (v) => v == 0 ? 'Off' : '$v s',
+                  onChanged: (v) =>
+                      _guard(context, () => app.setAuxTimeout(v)),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'The Nano enforces these. The current limit follows the '
+                  'selected module (it can only be tightened below the 5 A '
+                  'hard cap). Enable the over-temperature trip only after '
+                  'wiring a temperature sensor to A3 - an unconnected input '
+                  'gives meaningless readings. Settings are saved on the Nano.',
                   style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                 ),
               ],
@@ -235,6 +281,43 @@ class ControlsScreen extends StatelessWidget {
     }
   }
 
+  Widget _limitDropdown({
+    required String label,
+    required bool enabled,
+    required int value,
+    required List<int> options,
+    required String Function(int) format,
+    required ValueChanged<int> onChanged,
+  }) {
+    // Show a value the firmware reports even if it isn't one of the presets.
+    final opts = List<int>.of(options);
+    if (!opts.contains(value)) {
+      opts.add(value);
+      opts.sort();
+    }
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(color: AppColors.textSecondary)),
+        DropdownButton<int>(
+          value: opts.contains(value) ? value : opts.first,
+          onChanged: enabled ? (v) => onChanged(v ?? value) : null,
+          items: [
+            for (final o in opts)
+              DropdownMenuItem(value: o, child: Text(format(o))),
+          ],
+        ),
+      ],
+    );
+  }
+
+  void _pulseRelay(AppState app, int n) =>
+      app.pulseRelay(n).catchError((_) {});
+
+  // Immediate release rather than waiting for the pulse to expire.
+  void _releaseRelay(AppState app, int n) =>
+      app.setRelay(n, false).catchError((_) {});
+
   Future<void> _testRelay(BuildContext context, AppState app, int n) async {
     await _guard(context, () async {
       await app.testRelay(n);
@@ -277,22 +360,63 @@ class ControlsScreen extends StatelessWidget {
 }
 
 /// One auxiliary relay: label, live state, ON/OFF switch and a TEST button.
-class _RelayRow extends StatelessWidget {
+class _RelayRow extends StatefulWidget {
   final int n;
+  final String name;
   final bool on;
   final bool enabled;
   final bool testEnabled;
+  final bool holdEnabled;
   final ValueChanged<bool> onSet;
   final VoidCallback onTest;
 
+  /// Called immediately on press and then every 300 ms while HOLD is held.
+  final VoidCallback onHold;
+
+  /// Called when HOLD is released or cancelled.
+  final VoidCallback onRelease;
+
   const _RelayRow({
     required this.n,
+    required this.name,
     required this.on,
     required this.enabled,
     required this.testEnabled,
+    required this.holdEnabled,
     required this.onSet,
     required this.onTest,
+    required this.onHold,
+    required this.onRelease,
   });
+
+  @override
+  State<_RelayRow> createState() => _RelayRowState();
+}
+
+class _RelayRowState extends State<_RelayRow> {
+  Timer? _holdTimer;
+
+  void _down() {
+    _holdTimer?.cancel();
+    widget.onHold();
+    // The Nano drops the relay itself when pulses stop, so even if the
+    // release below is lost the relay cannot stay energised.
+    _holdTimer = Timer.periodic(
+        const Duration(milliseconds: 300), (_) => widget.onHold());
+  }
+
+  void _up() {
+    if (_holdTimer == null) return;
+    _holdTimer!.cancel();
+    _holdTimer = null;
+    widget.onRelease();
+  }
+
+  @override
+  void dispose() {
+    _holdTimer?.cancel(); // pulses stop; the Nano releases the relay itself
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -302,19 +426,42 @@ class _RelayRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('RELAY $n',
+              Text(widget.name.toUpperCase(),
                   style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text(on ? 'ENERGIZED' : 'OFF',
+              Text(widget.on ? 'ENERGIZED' : 'OFF',
                   style: TextStyle(
                       fontSize: 12,
-                      color: on ? AppColors.success : AppColors.textSecondary)),
+                      color: widget.on
+                          ? AppColors.success
+                          : AppColors.textSecondary)),
             ],
           ),
         ),
-        Switch(value: on, onChanged: enabled ? onSet : null),
+        Switch(
+            value: widget.on,
+            onChanged: widget.enabled ? widget.onSet : null),
+        const SizedBox(width: 4),
+        // Hold-to-energise: the relay is on only while this is pressed.
+        Listener(
+          onPointerDown: widget.holdEnabled ? (_) => _down() : null,
+          onPointerUp: widget.holdEnabled ? (_) => _up() : null,
+          onPointerCancel: widget.holdEnabled ? (_) => _up() : null,
+          child: Opacity(
+            opacity: widget.holdEnabled ? 1 : 0.4,
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.surfaceBorder),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text('HOLD'),
+            ),
+          ),
+        ),
         const SizedBox(width: 8),
         OutlinedButton(
-          onPressed: testEnabled ? onTest : null,
+          onPressed: widget.testEnabled ? widget.onTest : null,
           child: const Text('TEST'),
         ),
       ],

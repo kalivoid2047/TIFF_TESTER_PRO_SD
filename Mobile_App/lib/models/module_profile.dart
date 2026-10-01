@@ -36,6 +36,10 @@ class ModuleProfile {
   final String tempMin;
   final String tempMax;
   final String relayRequirements;
+
+  /// Friendly names for relays 1-4 ("Ignition", "Fuel pump", ...). Empty
+  /// entries fall back to "Relay n". App-local, like the rest of this record.
+  final List<String> relayNames;
   final String mosfetRequirements;
   final String testProcedure;
   final String diagnosticCommands;
@@ -71,6 +75,7 @@ class ModuleProfile {
     this.tempMin = '',
     this.tempMax = '',
     this.relayRequirements = '',
+    this.relayNames = const ['', '', '', ''],
     this.mosfetRequirements = '',
     this.testProcedure = '',
     this.diagnosticCommands = '',
@@ -101,6 +106,7 @@ class ModuleProfile {
     String? tempMin,
     String? tempMax,
     String? relayRequirements,
+    List<String>? relayNames,
     String? mosfetRequirements,
     String? testProcedure,
     String? diagnosticCommands,
@@ -132,6 +138,7 @@ class ModuleProfile {
         tempMin: tempMin ?? this.tempMin,
         tempMax: tempMax ?? this.tempMax,
         relayRequirements: relayRequirements ?? this.relayRequirements,
+        relayNames: relayNames ?? this.relayNames,
         mosfetRequirements: mosfetRequirements ?? this.mosfetRequirements,
         testProcedure: testProcedure ?? this.testProcedure,
         diagnosticCommands: diagnosticCommands ?? this.diagnosticCommands,
@@ -172,6 +179,7 @@ class ModuleProfile {
         'tempMin': tempMin,
         'tempMax': tempMax,
         'relayRequirements': relayRequirements,
+        'relayNames': relayNames,
         'mosfetRequirements': mosfetRequirements,
         'testProcedure': testProcedure,
         'diagnosticCommands': diagnosticCommands,
@@ -203,6 +211,7 @@ class ModuleProfile {
         tempMin: json['tempMin'] as String? ?? '',
         tempMax: json['tempMax'] as String? ?? '',
         relayRequirements: json['relayRequirements'] as String? ?? '',
+        relayNames: _namesFromJson(json['relayNames']),
         mosfetRequirements: json['mosfetRequirements'] as String? ?? '',
         testProcedure: json['testProcedure'] as String? ?? '',
         diagnosticCommands: json['diagnosticCommands'] as String? ?? '',
@@ -211,4 +220,16 @@ class ModuleProfile {
         notes: json['notes'] as String? ?? '',
         sdModuleId: json['sdModuleId'] as String? ?? '',
       );
+
+  /// Always returns exactly four entries, tolerating records saved before
+  /// relay names existed.
+  static List<String> _namesFromJson(Object? raw) {
+    final out = ['', '', '', ''];
+    if (raw is List) {
+      for (var i = 0; i < 4 && i < raw.length; i++) {
+        out[i] = raw[i]?.toString() ?? '';
+      }
+    }
+    return out;
+  }
 }

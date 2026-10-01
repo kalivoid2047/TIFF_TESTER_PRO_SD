@@ -25,6 +25,10 @@ struct NanoStatus {
   bool aux[3] = {false, false, false};
   float tempC = 0;
   bool relayActiveLow = true; // from the Nano's EXT line (default active-low)
+  // Active protection limits, from the Nano's LIMITS line.
+  float limMinV = 11.0f, limMaxV = 15.0f, limMaxA = 5.0f;
+  float limTempC = 0;        // 0 = over-temperature trip disabled
+  int auxTimeoutS = 0;       // 0 = no aux relay auto-off
 };
 
 struct SystemConfig {

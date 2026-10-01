@@ -42,8 +42,10 @@ String liveText() {
          " R3:" + String(nano.aux[1] ? "ON" : "OFF") +
          " R4:" + String(nano.aux[2] ? "ON" : "OFF") + "\n";
   out += "\n";
-  out += "CAN - " + String(canReady ? "READY" : "NOT READY") + "\n";
-  out += "K-LINE - " + String(klineReady ? "READY" : "NOT READY") + "\n";
+  out += "CAN - " + String(canReady ? "READY" : "NOT READY") +
+         (canSelfTestResult == 1 ? " (self-test OK)" : (canSelfTestResult == 0 ? " (SELF-TEST FAILED)" : "")) + "\n";
+  out += "K-LINE - " + String(klineReady ? "READY" : "NOT READY") +
+         (klineSelfTestResult == 1 ? " (self-test OK)" : (klineSelfTestResult == 0 ? " (SELF-TEST FAILED)" : "")) + "\n";
   out += "INA219 - " + String(inaReady ? "READY" : "NOT FOUND") + "\n";
   if (nano.fault && nano.faultText.length())
     out += "SYSTEM - FAULT: " + nano.faultText + "\n";
@@ -70,7 +72,12 @@ String liveStatusJson() {
   out += "\"kline\":" + String(klineReady ? 1 : 0) + ",";
   out += "\"ina\":" + String(inaReady ? 1 : 0) + ",";
   out += "\"sys\":" + String(liveSystemReady() ? 1 : 0) + ",";
-  out += "\"pol\":" + String(nano.relayActiveLow ? 1 : 0);
+  out += "\"pol\":" + String(nano.relayActiveLow ? 1 : 0) + ",";
+  out += "\"lim_a\":" + String(nano.limMaxA, 2) + ",";
+  out += "\"lim_t\":" + String(nano.limTempC, 0) + ",";
+  out += "\"aux_to\":" + String(nano.auxTimeoutS) + ",";
+  out += "\"can_st\":" + String(canSelfTestResult) + ",";
+  out += "\"kline_st\":" + String(klineSelfTestResult);
   out += "}";
   return out;
 }

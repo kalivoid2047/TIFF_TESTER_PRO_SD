@@ -48,6 +48,7 @@
 #define MCP_MODE_MASK    0xE0
 
 bool canReady = false;
+int8_t canSelfTestResult = -1; // -1 not run, 0 failed, 1 passed (canLoopbackTest)
 long canBitrate = 0;   // last successfully applied bitrate (0 = never)
 long canOscHz = 0;     // last successfully applied oscillator
 
@@ -249,4 +250,54 @@ String canErrorText() {
   if (e & 0x01) s += " ERR_WARN";
   if (e & 0xC0) s += " RX_OVERFLOW";
   return s;
+}
+
+// Controller self-test using the MCP2515's internal loopback mode: a frame is
+// sent and received entirely inside the chip, so it verifies SPI, the
+// controller and its bit-timing setup WITHOUT putting anything on the bus
+// (safe even with an ECU attached). It does not test the CAN transceiver or the
+// wiring to the bus. Must be called from loop() context (shares SPI with SD).
+bool canLoopbackTest(String &detail) {
+  if (!canReady) {
+    detail = "CAN not initialised";
+    canSelfTestResult = 0;
+    return false;
+  }
+
+  bool ok = false;
+  // Loopback is entered from configuration mode; CNF registers are kept.
+  if (!mcpSetMode(MCP_MODE_CONFIG)) {
+    detail = "cannot enter config mode";
+  } else if (!mcpSetMode(0x40)) {
+    detail = "cannot enter loopback mode";
+  } else {
+    const uint8_t tx[4] = {0xA5, 0x5A, 0x12, 0x34};
+    mcpBitModify(MCP_CANINTF, 0x03, 0x00); // drop stale RX flags
+    if (!canSendMessageExt(0x123, false, tx, 4)) {
+      detail = "loopback transmit failed";
+    } else {
+      uint32_t id; bool ext; uint8_t d[8], l;
+      uint32_t start = millis();
+      detail = "no frame received in loopback";
+      while (millis() - start < 50) {
+        if (canReceiveFrame(id, ext, d, l)) {
+          ok = (id == 0x123 && !ext && l == 4 && memcmp(d, tx, 4) == 0);
+          detail = ok ? "loopback frame sent and received" : "loopback frame corrupted";
+          break;
+        }
+      }
+    }
+  }
+
+  // Always return to normal mode.
+  mcpSetMode(MCP_MODE_CONFIG);
+  bool back = mcpSetMode(MCP_MODE_NORMAL);
+  mcpBitModify(MCP_CANINTF, 0x03, 0x00);
+  if (!back) {
+    canReady = false;
+    detail += "; FAILED to return to normal mode";
+    ok = false;
+  }
+  canSelfTestResult = ok ? 1 : 0;
+  return ok;
 }

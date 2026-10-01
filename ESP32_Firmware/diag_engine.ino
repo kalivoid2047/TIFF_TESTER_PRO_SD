@@ -17,6 +17,8 @@
 //   KLINE_MONITOR:<0|1>
 //   KWP_REQUEST:<hex>  KWP_START_SESSION  KWP_READ_DTC  KWP_CLEAR_DTC
 //   KWP_TESTER_PRESENT
+//   SELFTEST                            CAN loopback + K-Line idle-level check
+//   SELFTEST:KLINE_ECHO                 also drives the K-Line low briefly (active echo check)
 //   DIAG_STOP                           (always allowed: stops monitors, drops queue)
 //
 // SAFETY: nothing in this tab can switch a relay or send a command to the
@@ -28,6 +30,7 @@
 // Arduino concatenates tabs alphabetically, so variables defined in tabs that
 // sort after this one (kline_iso14230, uds_isotp) must be declared here.
 extern String klineError;
+extern int8_t klineSelfTestResult;
 extern uint8_t isotpPadByte;
 extern bool isotpPadding;
 
@@ -401,7 +404,40 @@ static void diagExecute(const String &cmd) {
   if (name == "KWP_CLEAR_DTC")     { uint8_t req[3] = {0x14, 0xFF, 0x00}; runKwp(req, 3, "CLEAR_DTC", 2); return; }
   if (name == "KWP_TESTER_PRESENT"){ uint8_t req[2] = {0x3E, 0x01}; runKwp(req, 2, "TESTER_PRESENT", 0); return; }
 
+  if (name == "SELFTEST") {
+    String d;
+    bool canOk = canLoopbackTest(d);
+    diagEmit("selftest", canOk, "CAN loopback: " + d);
+
+    bool kOk = klineIdleCheck(d);
+    diagEmit("selftest", kOk, "K-Line idle level: " + d);
+
+    arg.toUpperCase();
+    if (arg == "KLINE_ECHO") {
+      bool eOk = klineEchoCheck(d);
+      diagEmit("selftest", eOk, "K-Line echo: " + d);
+      kOk = kOk && eOk;
+    }
+    diagEmit("selftest", canOk && kOk, String("SELF-TEST ") + ((canOk && kOk) ? "PASSED" : "FAILED"));
+    return;
+  }
+
   diagEmit("diag", false, "UNKNOWN_COMMAND " + name);
+}
+
+// Runs once at boot, before BLE is up: the CAN loopback test (puts nothing on
+// the bus) and the passive K-Line idle-level check. The active K-Line echo test
+// is deliberately NOT run here because it pulls the line low. Results go to the
+// serial console, /LOGS/system.log and the live status (can_st / kline_st).
+void bootSelfTest() {
+  String d;
+  bool canOk = canLoopbackTest(d);
+  Serial.println("SELFTEST CAN loopback: " + String(canOk ? "PASS" : "FAIL") + " - " + d);
+  logLine("/LOGS/system.log", "Self-test CAN loopback " + String(canOk ? "PASS" : "FAIL") + ": " + d);
+
+  bool kOk = klineIdleCheck(d);
+  Serial.println("SELFTEST K-Line idle: " + String(kOk ? "PASS" : "FAIL") + " - " + d);
+  logLine("/LOGS/system.log", "Self-test K-Line idle " + String(kOk ? "PASS" : "FAIL") + ": " + d);
 }
 
 // ---------- entry points ----------
@@ -430,7 +466,7 @@ bool diagHandleCommand(const String &cmd) {
     "CAN_INIT", "CAN_CONFIG", "CAN_TX", "UDS_REQUEST", "UDS_SESSION", "UDS_READ_DID",
     "UDS_READ_DTC", "UDS_CLEAR_DTC", "UDS_TESTER_PRESENT", "KLINE_CONFIG", "KLINE_INIT",
     "KLINE_5BAUD_INIT", "KWP_REQUEST", "KWP_START_SESSION", "KWP_READ_DTC", "KWP_CLEAR_DTC",
-    "KWP_TESTER_PRESENT"};
+    "KWP_TESTER_PRESENT", "SELFTEST"};
   String name = cmd.indexOf(':') < 0 ? cmd : cmd.substring(0, cmd.indexOf(':'));
   for (const char *p : prefixes) {
     if (name == p) {

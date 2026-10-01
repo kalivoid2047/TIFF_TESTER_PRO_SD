@@ -140,8 +140,19 @@ bool loadActiveModule(const String &id) {
   }
   activeModule.loaded = true;
   diagApplyModule(); // diag_engine.ino - push addressing/bitrate to the engine
+  pushModuleLimits();
 
   return true;
+}
+
+// Sends the active module's voltage/current window to the Nano, which clamps it
+// so a module can only TIGHTEN the hard caps, never loosen them. Called when a
+// module is selected and then periodically from loop().
+void pushModuleLimits() {
+  if (!activeModule.loaded) return;
+  if (activeModule.minVoltageV <= 0 || activeModule.maxVoltageV <= 0 || activeModule.maxCurrentA <= 0) return;
+  sendNano("SET_LIMITS," + String(activeModule.minVoltageV, 2) + "," +
+           String(activeModule.maxVoltageV, 2) + "," + String(activeModule.maxCurrentA, 2));
 }
 
 // No RTC on this board yet — timestamps are uptime-based. Replace with a

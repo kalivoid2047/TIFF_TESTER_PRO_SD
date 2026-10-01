@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../ble/tiff_ble_service.dart';
 import '../models/diag_line.dart';
+import '../models/live_sample.dart';
 import '../models/module_profile.dart';
 import '../models/nano_status.dart';
 import '../models/test_result.dart';
@@ -66,6 +67,52 @@ class AppState extends ChangeNotifier {
   StreamSubscription<DiagLine>? _diagSub;
   StreamSubscription<BluetoothConnectionState>? _connectionSub;
 
+  /// Live bench readings for the graph, CSV copy and PDF summary (newest
+  /// last), capped at [maxLiveSamples] (~5 min at the firmware's 500 ms
+  /// status cadence). Survives disconnects so a report can be made afterwards.
+  final List<LiveSample> liveHistory = [];
+  static const int maxLiveSamples = 600;
+
+  void _recordLive(NanoStatus s) {
+    liveHistory.add(LiveSample(
+      time: DateTime.now(),
+      supplyV: s.supplyV,
+      dutV: s.dutV,
+      currentA: s.currentA,
+      positionPct: s.positionPct,
+      tempC: s.tempReported ? s.tempC : double.nan,
+    ));
+    if (liveHistory.length > maxLiveSamples) {
+      liveHistory.removeRange(0, liveHistory.length - maxLiveSamples);
+    }
+  }
+
+  void clearLiveHistory() {
+    liveHistory.clear();
+    notifyListeners();
+  }
+
+  /// The local module record linked (via `sdModuleId`) to the SD profile that
+  /// is active on the tester, if any.
+  ModuleProfile? get activeModuleRecord {
+    final id = activeModuleId;
+    if (id == null || id.isEmpty) return null;
+    for (final m in moduleProfiles) {
+      if (m.sdModuleId == id) return m;
+    }
+    return null;
+  }
+
+  /// Display names for relays 1-4: the active module's own names where set,
+  /// otherwise "Relay n".
+  List<String> get relayNames {
+    final rec = activeModuleRecord;
+    return List.generate(4, (i) {
+      final n = rec?.relayNames[i].trim() ?? '';
+      return n.isEmpty ? 'Relay ${i + 1}' : n;
+    });
+  }
+
   /// Diagnostics console history (newest last), capped so a long CAN monitor
   /// session can't grow without bound.
   final List<DiagLine> diagLog = [];
@@ -78,6 +125,7 @@ class AppState extends ChangeNotifier {
 
     _statusSub = ble.statusStream.listen((s) {
       nanoStatus = s;
+      _recordLive(s);
       // V2 drops every output on a fault, so the last-commanded states are stale.
       if (s.fault && ble.isClassic) {
         for (var i = 0; i < _classicRelays.length; i++) {
@@ -243,6 +291,26 @@ class AppState extends ChangeNotifier {
   Future<void> testRelay(int n) => ble.sendCommand('RELAY_TEST:$n');
 
   Future<void> stopTest() => ble.sendCommand('STOP_TEST');
+
+  /// Momentary "hold to energise" for aux relays 2-4: the Nano drops the relay
+  /// by itself [ms] after the last pulse, so callers re-send while a button is
+  /// held and simply stop on release.
+  Future<void> pulseRelay(int n, {int ms = 800}) =>
+      ble.sendCommand('RELAY_PULSE:$n,$ms');
+
+  /// Over-temperature trip in degC (0 disables, otherwise 30-150). Saved on
+  /// the Nano.
+  Future<void> setTempLimit(int degC) =>
+      ble.sendCommand('SET_TEMP_LIMIT:$degC');
+
+  /// Auto-off for aux relays 2-4 in seconds (0 = none). Saved on the Nano.
+  Future<void> setAuxTimeout(int seconds) =>
+      ble.sendCommand('SET_AUX_TIMEOUT:$seconds');
+
+  /// CAN loopback + K-Line idle-level check; [klineEcho] also drives the
+  /// K-Line low briefly. Results appear in the Diagnostics console.
+  Future<void> runSelfTest({bool klineEcho = false}) =>
+      sendDiag(klineEcho ? 'SELFTEST:KLINE_ECHO' : 'SELFTEST');
 
   // --- Diagnostics (CAN / UDS / K-Line / KWP) ---------------------------
   // The ESP32 owns the transport (ISO-TP, KWP framing, safety whitelists);
@@ -432,6 +500,7 @@ class AppState extends ChangeNotifier {
       tempMin: copy.tempMin,
       tempMax: copy.tempMax,
       relayRequirements: copy.relayRequirements,
+      relayNames: List.of(copy.relayNames),
       mosfetRequirements: copy.mosfetRequirements,
       testProcedure: copy.testProcedure,
       diagnosticCommands: copy.diagnosticCommands,

@@ -36,6 +36,7 @@ class ResultsScreen extends StatelessWidget {
     final doc = await buildReportPdf(
       results: app.results,
       deviceName: app.connectedName,
+      liveSamples: app.liveHistory,
     );
     await Printing.sharePdf(
       bytes: await doc.save(),
