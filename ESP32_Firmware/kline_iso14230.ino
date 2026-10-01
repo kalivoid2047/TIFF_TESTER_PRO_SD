@@ -17,8 +17,14 @@
 
 #define KLINE_BAUD 10400
 
+// True once the UART is open. This does NOT mean an ECU answered - the
+// L9637D transceiver can't be probed from here; klineFastInit() is what
+// tells you whether an ECU responds.
+bool klineReady = false;
+
 void klineInit() {
   KlineSerial.begin(KLINE_BAUD, SERIAL_8N1, KLINE_RX, KLINE_TX);
+  klineReady = true;
 }
 
 // ISO 14230 fast init: K-line low for 25ms, high for 25ms, then send the

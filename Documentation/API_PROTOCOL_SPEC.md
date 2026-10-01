@@ -86,6 +86,21 @@ runs and completes synchronously (one sensor read, or an immediate
 accepted now so the app's Stop button has something valid to send once
 real, longer-running pulse tests exist.
 
+#### Relay commands (4 relays)
+
+```
+RELAY:<n>,<0|1>      n = 1 (DUT relay) .. 4; 1 = on, 0 = off
+RELAY_TEST:<n>       cycle relay n on/off 3x; outcome arrives on the Result characteristic as `relay_<n>`
+```
+
+Both require PIN auth. The Nano makes the actual decision: relay 1 goes
+through the full `safetyOK()` gate; relays 2-4 refuse on e-stop, a latched
+fault, or supply overvoltage (not undervoltage, so they stay testable on a
+bench without 12 V). All relays drop on e-stop, any fault, heartbeat loss,
+`POWER_OFF` and `STOP_TEST`. Only relay 1 has feedback (DUT voltage), so only
+its test reports `PASS`/`FAIL`; relays 2-4 report `ACTUATED` (marked pass,
+with a "confirm visually" note) because nothing can observe them.
+
 ### 1.4 Status notify format
 Reuses the existing `STATUS,relay,fault,estop,watchdog,supply,dut,current,
 faulttext` CSV line already produced by the Nano — the ESP32 simply relays
@@ -102,6 +117,18 @@ During an active test, an additional `test_state` field should be included:
 }
 ```
 
+Additional live-data fields (all optional for older clients):
+
+```json
+{ "relays": [1,0,0,0], "temp_c": 31.5, "pos_pct": 0,
+  "can": 1, "kline": 1, "ina": 0, "sys": 1 }
+```
+
+`dut_v`/`current_a` come from the INA219 when `ina` is 1, otherwise from the
+Nano. `pos_pct` is a raw 0-3.3 V reading of ESP32 GPIO33 (0 when nothing is
+connected). `kline` means the UART is open, not that an ECU answered.
+`sys` = Nano online + watchdog active + no fault + e-stop released.
+
 ## 2. Wi-Fi / REST interface (existing, retained)
 
 No changes required to the existing endpoints for this phase; they remain
@@ -115,6 +142,9 @@ the bench/engineering interface (see [ARCHITECTURE.md](ARCHITECTURE.md) §2):
 | GET | `/api/power/off` | Request DUT power off |
 | POST | `/api/module` | Validate + save a module `.INI` |
 | GET | `/api/modules` | List SD module files |
+| GET | `/api/live` | Plain-text live-data preview (voltages, current, position, temperature, relays, CAN/K-LINE/INA219/SYSTEM readiness) |
+| POST | `/api/relay` | Form fields `n` (1-4) and `state` (0/1) |
+| POST | `/api/relay/test` | Form field `n` (1-4) |
 
 **Proposed additions** (optional, Should-have, useful for parity/debugging
 without requiring the mobile app):
@@ -188,6 +218,18 @@ TEST_STATUS,<type>,<channel>,<status>,<elapsed_s>,<last_current_a>,<result>,<fau
 ```
   e.g. `TEST_STATUS,INJ,1,TESTING,3,1.85,,` while running, and
   `TEST_STATUS,INJ,1,DONE,5,1.90,PASS,` on completion.
+
+### 4.3a Relay commands and status (implemented)
+```
+RELAY,<n>,<0|1>          n=1 DUT relay (D4), 2-4 auxiliary (D5/D7/D8)
+RELAY_TEST,<n>
+RELAY_TEST_STOP
+```
+Extra status lines (the `STATUS` line itself is unchanged):
+```
+EXT,<relay1>,<relay2>,<relay3>,<relay4>,<tempC>
+RELAY_TEST,<n>,<RUNNING|DONE|ABORTED>,<cycle>,<PASS|FAIL|ACTUATED|>,<detail>
+```
 
 ### 4.4 Framing/robustness notes (apply to both existing and new lines)
 - Existing line-based, newline-terminated, comma-separated format is

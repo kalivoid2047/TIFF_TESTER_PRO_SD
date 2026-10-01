@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_card.dart';
+import '../widgets/live_data_card.dart';
 
 /// Manual output control screen (Documentation/PRD.md §11, vision brief
 /// §17 "Control Screen" / §18 "Safety Control" / §37 "Emergency ALL
@@ -28,8 +29,9 @@ class ControlsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          const LiveDataCard(),
           AppCard(
-            title: 'DUT Relay',
+            title: 'DUT Relay (Relay 1)',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -60,9 +62,29 @@ class ControlsScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                OutlinedButton(
-                  onPressed: connected ? () => app.resetFault() : null,
-                  child: const Text('RESET FAULT'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: connected ? () => app.resetFault() : null,
+                        child: const Text('RESET FAULT'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed:
+                            connected ? () => _testRelay(context, app, 1) : null,
+                        child: const Text('TEST RELAY 1'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Relay test cycles the relay 3x and checks DUT voltage '
+                  'follows it. The DUT rail must be connected for a PASS.',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                 ),
               ],
             ),
@@ -74,11 +96,26 @@ class ControlsScreen extends StatelessWidget {
               children: [
                 const Text(
                   'Separate from the DUT relay above — these drive other '
-                  'bench outputs, not the device under test.',
+                  'bench outputs, not the device under test. All turn off '
+                  'on e-stop, any fault, link loss and ALL OUTPUTS OFF.',
                   style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                 ),
-                const SizedBox(height: 12),
-                _PendingHardwareRow(labels: const ['RELAY 2', 'RELAY 3', 'RELAY 4']),
+                const SizedBox(height: 8),
+                for (var n = 2; n <= 4; n++)
+                  _RelayRow(
+                    n: n,
+                    on: status.relays[n - 1],
+                    enabled: connected,
+                    onSet: (on) => _setRelay(context, app, n, on),
+                    onTest: () => _testRelay(context, app, n),
+                  ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Relays 2-4 have no feedback sensor, so TEST reports '
+                  'ACTUATED (cycles completed) — confirm the click or load '
+                  'yourself.',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                ),
               ],
             ),
           ),
@@ -119,6 +156,33 @@ class ControlsScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _setRelay(
+      BuildContext context, AppState app, int n, bool on) async {
+    await _guard(context, () => app.setRelay(n, on));
+  }
+
+  Future<void> _testRelay(BuildContext context, AppState app, int n) async {
+    await _guard(context, () async {
+      await app.testRelay(n);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Testing relay $n — result will appear in Results')));
+      }
+    });
+  }
+
+  /// Runs a device command, surfacing failures (including "not supported by
+  /// the V2 firmware") instead of silently swallowing them.
+  Future<void> _guard(BuildContext context, Future<void> Function() op) async {
+    try {
+      await op();
+    } catch (e) {
+      if (!context.mounted) return;
+      final msg = e is StateError ? e.message : 'Failed to reach device';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    }
+  }
+
   Future<void> _allOutputsOff(BuildContext context, AppState app) async {
     if (!app.isConnected) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -135,6 +199,50 @@ class ControlsScreen extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Failed to reach device')));
     }
+  }
+}
+
+/// One auxiliary relay: label, live state, ON/OFF switch and a TEST button.
+class _RelayRow extends StatelessWidget {
+  final int n;
+  final bool on;
+  final bool enabled;
+  final ValueChanged<bool> onSet;
+  final VoidCallback onTest;
+
+  const _RelayRow({
+    required this.n,
+    required this.on,
+    required this.enabled,
+    required this.onSet,
+    required this.onTest,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('RELAY $n',
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(on ? 'ENERGIZED' : 'OFF',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: on ? AppColors.success : AppColors.textSecondary)),
+            ],
+          ),
+        ),
+        Switch(value: on, onChanged: enabled ? onSet : null),
+        const SizedBox(width: 8),
+        OutlinedButton(
+          onPressed: enabled ? onTest : null,
+          child: const Text('TEST'),
+        ),
+      ],
+    );
   }
 }
 

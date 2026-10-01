@@ -144,6 +144,7 @@ class TiffClassicLink {
       dutV: num_('DUT_VOLTAGE'),
       currentA: num_('CURRENT'),
       faultText: fault == 'NO' ? '' : fault,
+      systemReady: fault == 'NO' && (kv['WATCHDOG'] ?? 'OK') == 'OK',
     );
   }
 

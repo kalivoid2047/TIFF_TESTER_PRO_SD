@@ -20,6 +20,10 @@ struct NanoStatus {
   float dutV = 0;
   float currentA = 0;
   String faultText = "";
+  // Relays 2-4 (auxiliary) and the Nano's temperature input, from the
+  // Nano's EXT line. Relay 1 is `relay` above.
+  bool aux[3] = {false, false, false};
+  float tempC = 0;
 };
 
 struct SystemConfig {

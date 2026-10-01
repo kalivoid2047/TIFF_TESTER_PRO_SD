@@ -66,6 +66,23 @@ class BleCommandCallbacks : public BLECharacteristicCallbacks {
     bool alwaysAllowed = (cmd == "POWER_OFF" || cmd == "STOP_TEST");
     if (!bleAuthenticated && !alwaysAllowed) return;
 
+    // RELAY:<n>,<0|1> (1=DUT, 2-4=auxiliary) and RELAY_TEST:<n>. The Nano
+    // enforces e-stop/fault/heartbeat gating; nothing is decided here.
+    if (cmd.startsWith("RELAY:")) {
+      String p = cmd.substring(6);
+      int c = p.indexOf(',');
+      int n = p.substring(0, c < 0 ? 0 : c).toInt();
+      int v = c < 0 ? -1 : p.substring(c + 1).toInt();
+      if (n >= 1 && n <= 4 && (v == 0 || v == 1))
+        sendNano("RELAY," + String(n) + "," + String(v));
+      return;
+    }
+    if (cmd.startsWith("RELAY_TEST:")) {
+      int n = cmd.substring(11).toInt();
+      if (n >= 1 && n <= 4) sendNano("RELAY_TEST," + String(n));
+      return;
+    }
+
     if (cmd == "POWER_ON") { sendNano("POWER_ON"); return; }
     if (cmd == "POWER_OFF") { sendNano("POWER_OFF"); return; }
     if (cmd == "RESET_FAULT") { sendNano("RESET_FAULT"); return; }
@@ -139,9 +156,13 @@ class BleCommandCallbacks : public BLECharacteristicCallbacks {
 
     // STOP_TEST: every test above runs and completes synchronously (single
     // sensor read, or an immediate NOT_IMPLEMENTED) rather than a
-    // long-running pulse train, so there is nothing in-flight to actually
-    // interrupt yet. Accepted as a no-op now so the app's Stop button has
-    // something valid to send; revisit once real pulsed tests exist.
+    // long-running pulse train. The one in-flight thing it can interrupt is
+    // a relay test (and the Nano's supervised test window), so forward it.
+    if (cmd == "STOP_TEST") {
+      sendNano("RELAY_TEST_STOP");
+      sendNano("TEST_STOP");
+      return;
+    }
   }
 };
 
@@ -197,16 +218,7 @@ void bleInit() {
 void bleNotifyStatus() {
   if (!bleClientConnected || !bleStatusChar) return;
 
-  String out = "{";
-  out += "\"relay\":" + String(nano.relay) + ",";
-  out += "\"fault\":" + String(nano.fault) + ",";
-  out += "\"estop\":" + String(nano.estop) + ",";
-  out += "\"watchdog\":" + String(nano.watchdog) + ",";
-  out += "\"supply_v\":" + String(nano.supplyV, 2) + ",";
-  out += "\"dut_v\":" + String(nano.dutV, 2) + ",";
-  out += "\"current_a\":" + String(nano.currentA, 2) + ",";
-  out += "\"fault_text\":\"" + nano.faultText + "\"";
-  out += "}";
+  String out = liveStatusJson(); // live_data.ino
 
   bleStatusChar->setValue(out.c_str());
   bleStatusChar->notify();

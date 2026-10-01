@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_card.dart';
+import '../widgets/live_data_card.dart';
 import 'all_injectors_test_screen.dart';
 import 'coil_test_screen.dart';
 import 'controls_screen.dart';
@@ -115,6 +116,7 @@ class HomeScreen extends StatelessWidget {
               ],
             ),
           ),
+          const LiveDataCard(),
           AppCard(
             title: 'Module',
             child: Column(

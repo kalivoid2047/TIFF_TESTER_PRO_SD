@@ -27,14 +27,29 @@ against a real K-Line ECU — bench-test with a scope before trusting it
 against a vehicle module.
 
 Nano:
-D4  = DUT relay driver
+D4  = DUT relay driver (relay 1)
+D5  = Auxiliary relay 2 driver
+D7  = Auxiliary relay 3 driver
+D8  = Auxiliary relay 4 driver
 D3  = Emergency stop input (INPUT_PULLUP)
 D6  = Buzzer
 D13 = Status LED
 A0  = DUT voltage
 A1  = Supply voltage
 A2  = Current sensor
-A3  = Temperature / spare
+A3  = Temperature (read as an LM35: 10 mV/degC; change TEMP_C_PER_V for other sensors)
+
+Relays 1-4 share the one polarity setting (SET_RELAY_POLARITY) and are all
+driven OFF at boot, on e-stop, on any fault, on heartbeat loss and on
+POWER_OFF. Drive relay coils through the module's own driver/opto stage - do
+not power coils from the Nano pins.
+
+Extra ESP32 pins for the live-data preview:
+GPIO21 = I2C SDA, GPIO22 = I2C SCL  -> optional INA219 (addr 0x40, 0.1 ohm
+         shunt, readable to ~3.2 A with the default range)
+GPIO33 = position feedback (0-3.3 V -> 0-100 %; protect/divide the real
+         sensor signal. Internal pull-down: unconnected reads 0 %, which is
+         not a real position)
 
 NOTE ON RELAY POLARITY:
 The relay module's electrical logic must match the firmware. This is now

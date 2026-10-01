@@ -31,6 +31,8 @@
     can_mcp2515.ino                - MCP2515 CAN driver
     kline_iso14230.ino             - ISO 14230 K-Line driver
     ble_service.ino                - BLE GATT service for a future mobile app
+    ina219.ino                     - optional INA219 DUT voltage/current monitor (I2C)
+    live_data.ino                  - live-data preview (text + JSON) shared by web/BLE
     test_orchestrator.ino          - module-profile-driven test execution + reports
 */
 
@@ -62,6 +64,12 @@
 #define SUPPLY_VOLT_PIN 32
 
 #define STATUS_LED      2
+
+// Optional INA219 on the default I2C pins; position feedback is a 0-3.3 V
+// analog input (needs a divider/protection from the real sensor).
+#define INA_SDA        21
+#define INA_SCL        22
+#define POSITION_PIN   33
 
 HardwareSerial NanoSerial(2);
 HardwareSerial KlineSerial(1);
@@ -109,6 +117,7 @@ uint32_t lastHeartbeat = 0;
 uint32_t lastStatusPoll = 0;
 
 NanoStatus nano;
+uint32_t lastNanoStatusMs = 0; // millis() of the last Nano STATUS line
 
 String serialLine;
 
@@ -139,6 +148,55 @@ void parseNanoLine(String s) {
       nano.dutV = a[6].toFloat();
       nano.currentA = a[7].toFloat();
       if (n >= 9) nano.faultText = a[8];
+      lastNanoStatusMs = millis();
+    }
+    return;
+  }
+
+  // EXT,relay1,relay2,relay3,relay4,tempC
+  if (s.startsWith("EXT,")) {
+    String a[6];
+    int start = 0, n = 0;
+    for (int i = 0; i <= (int)s.length() && n < 6; i++) {
+      if (i == (int)s.length() || s[i] == ',') {
+        a[n++] = s.substring(start, i);
+        start = i + 1;
+      }
+    }
+    if (n >= 6) {
+      nano.aux[0] = a[2].toInt();
+      nano.aux[1] = a[3].toInt();
+      nano.aux[2] = a[4].toInt();
+      nano.tempC = a[5].toFloat();
+    }
+    return;
+  }
+
+  // RELAY_TEST,relay,status,cycle,result,detail - only the final line
+  // (DONE/ABORTED) becomes a result; RUNNING lines are progress only.
+  if (s.startsWith("RELAY_TEST,")) {
+    String a[6];
+    int start = 0, n = 0;
+    for (int i = 0; i <= (int)s.length() && n < 6; i++) {
+      if (i == (int)s.length() || s[i] == ',') {
+        a[n++] = s.substring(start, i);
+        start = i + 1;
+      }
+    }
+    if (n >= 6 && a[2] != "RUNNING") {
+      TestResult r;
+      r.testType = "relay_" + a[1];
+      if (a[2] == "DONE") {
+        r.pass = (a[4] == "PASS" || a[4] == "ACTUATED");
+        r.response = "cycles=" + a[3] + " result=" + a[4];
+        if (a[4] == "ACTUATED")
+          r.response += " (no feedback on this relay - confirm click/load visually)";
+        if (a[5].length()) r.response += " detail=" + a[5];
+      } else {
+        r.pass = false;
+        r.response = "ABORTED: " + a[5];
+      }
+      notifyResult(r); // ble_service.ino - also appends to the report
     }
     return;
   }
@@ -204,13 +262,25 @@ textarea{width:100%;height:300px} .card{border:1px solid #aaa;padding:15px;margi
 <div class='card'><b>Bench Safety</b><p id='status'>Loading...</p>
 <button onclick="fetch('/api/power/off')">DUT OFF</button>
 <button onclick="fetch('/api/status').then(()=>location.reload())">Refresh</button></div>
+<div class='card'><b>Live Data</b><pre id='live'>Loading...</pre>
+<button onclick="r(1,1)">R1 ON</button><button onclick="r(1,0)">R1 OFF</button>
+<button onclick="r(2,1)">R2 ON</button><button onclick="r(2,0)">R2 OFF</button>
+<button onclick="r(3,1)">R3 ON</button><button onclick="r(3,0)">R3 OFF</button>
+<button onclick="r(4,1)">R4 ON</button><button onclick="r(4,0)">R4 OFF</button><br>
+<button onclick="t(1)">TEST R1</button><button onclick="t(2)">TEST R2</button>
+<button onclick="t(3)">TEST R3</button><button onclick="t(4)">TEST R4</button></div>
 <div class='card'><h2>Add / Update Module</h2>
 <form method='POST' action='/api/module'><textarea name='data'
 placeholder='Paste validated .INI module profile here'></textarea><br>
 <button type='submit'>Validate & Save</button></form></div>
 <div class='card'><h2>SD Modules</h2><a href='/api/modules'>View module list</a></div>
 <div class='card'><h2>Reports</h2><a href='/api/reports'>View saved reports</a></div>
-<script>fetch('/api/status').then(r=>r.text()).then(t=>document.getElementById('status').innerText=t)</script>
+<script>fetch('/api/status').then(r=>r.text()).then(t=>document.getElementById('status').innerText=t)
+function post(u,b){fetch(u,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:b})}
+function r(n,s){post('/api/relay','n='+n+'&state='+s)}
+function t(n){post('/api/relay/test','n='+n)}
+function live(){fetch('/api/live').then(r=>r.text()).then(t=>document.getElementById('live').innerText=t).catch(()=>{})}
+live();setInterval(live,1000)</script>
 </body></html>
 )HTML";
   server.send(200, "text/html", page);
@@ -237,6 +307,34 @@ void handlePowerOn() {
 void handlePowerOff() {
   sendNano("POWER_OFF");
   server.send(200, "text/plain", "POWER_OFF requested.");
+}
+
+// POST /api/relay  n=1..4 state=0|1 - relay 1 is the DUT relay.
+void handleRelaySet() {
+  int n = server.arg("n").toInt();
+  int state = server.arg("state").toInt();
+  if (n < 1 || n > 4 || (state != 0 && state != 1)) {
+    server.send(400, "text/plain", "n must be 1-4, state 0 or 1.");
+    return;
+  }
+  sendNano("RELAY," + String(n) + "," + String(state));
+  server.send(200, "text/plain", "RELAY " + String(n) + (state ? " ON" : " OFF") +
+                                     " requested; Nano performs safety checks.");
+}
+
+// POST /api/relay/test  n=1..4
+void handleRelayTest() {
+  int n = server.arg("n").toInt();
+  if (n < 1 || n > 4) {
+    server.send(400, "text/plain", "n must be 1-4.");
+    return;
+  }
+  sendNano("RELAY_TEST," + String(n));
+  server.send(200, "text/plain", "RELAY_TEST " + String(n) + " requested; result is logged to the report.");
+}
+
+void handleLive() {
+  server.send(200, "text/plain", liveText()); // live_data.ino
 }
 
 void handleModuleSave() {
@@ -300,6 +398,9 @@ void setupWeb() {
   server.on("/api/status", HTTP_GET, handleStatus);
   server.on("/api/power/on", HTTP_GET, handlePowerOn);
   server.on("/api/power/off", HTTP_GET, handlePowerOff);
+  server.on("/api/relay", HTTP_POST, handleRelaySet);
+  server.on("/api/relay/test", HTTP_POST, handleRelayTest);
+  server.on("/api/live", HTTP_GET, handleLive);
   server.on("/api/module", HTTP_POST, handleModuleSave);
   server.on("/api/modules", HTTP_GET, handleModules);
 
@@ -341,6 +442,8 @@ void setup() {
   Serial.println("BOOT: CAN init done.");
   klineInit();                // kline_iso14230.ino
   Serial.println("BOOT: K-Line init done.");
+  inaInit();                  // ina219.ino - optional, reports NOT FOUND if absent
+  pinMode(POSITION_PIN, INPUT_PULLDOWN);
 
   WiFi.mode(WIFI_AP);
   bool apOk = WiFi.softAP("TIFF_TESTER", sysConfig.apPassword.c_str());
@@ -371,6 +474,7 @@ void loop() {
 
   if (now - lastStatusPoll >= STATUS_POLL_MS) {
     sendNano("STATUS");
+    inaPoll(); // ina219.ino
     bleNotifyStatus(); // ble_service.ino
     lastStatusPoll = now;
   }

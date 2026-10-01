@@ -187,6 +187,16 @@ class AppState extends ChangeNotifier {
   }) =>
       ble.sendCommand('RUN_ALL_INJECTORS:$pulseWidthMs,$durationPerS');
 
+  /// Switches relay [n] (1 = DUT relay, 2-4 = auxiliary). The Nano decides
+  /// whether to honor it (e-stop/fault/supply gating); the real state comes
+  /// back in the next status notification.
+  Future<void> setRelay(int n, bool on) =>
+      ble.sendCommand('RELAY:$n,${on ? 1 : 0}');
+
+  /// Cycles relay [n] on/off 3x on the Nano; the outcome arrives as a
+  /// `relay_<n>` entry on the Results screen.
+  Future<void> testRelay(int n) => ble.sendCommand('RELAY_TEST:$n');
+
   Future<void> stopTest() => ble.sendCommand('STOP_TEST');
 
   /// Emergency "ALL OUTPUTS OFF" (vision brief §18, §37) — deliberately
