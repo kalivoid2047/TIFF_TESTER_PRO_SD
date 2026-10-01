@@ -78,6 +78,12 @@ class AppState extends ChangeNotifier {
 
     _statusSub = ble.statusStream.listen((s) {
       nanoStatus = s;
+      // V2 drops every output on a fault, so the last-commanded states are stale.
+      if (s.fault && ble.isClassic) {
+        for (var i = 0; i < _classicRelays.length; i++) {
+          _classicRelays[i] = false;
+        }
+      }
       notifyListeners();
     });
 
@@ -94,6 +100,9 @@ class AppState extends ChangeNotifier {
         connectedName = null;
         connectedId = null;
         nanoStatus = const NanoStatus.unknown();
+        for (var i = 0; i < _classicRelays.length; i++) {
+          _classicRelays[i] = false;
+        }
         activeModuleId = null;
         usingDefaultPin = false;
         notifyListeners();
@@ -167,6 +176,15 @@ class AppState extends ChangeNotifier {
   /// polarity control or diagnostics engine.
   bool get isClassic => ble.isClassic;
 
+  /// Last relay state *commanded* over the V2 link. The V2 firmware accepts
+  /// RELAY1..4_ON/OFF but reports no relay state, so this is what the UI shows
+  /// there (it is not a measurement).
+  final List<bool> _classicRelays = [false, false, false, false];
+
+  /// Relay states for the UI: reported by the BLE firmware, last-commanded on V2.
+  List<bool> get relayStates =>
+      isClassic ? List.unmodifiable(_classicRelays) : nanoStatus.relays;
+
   Future<void> powerOn() => ble.sendCommand('POWER_ON');
   Future<void> powerOff() => ble.sendCommand('POWER_OFF');
   Future<void> resetFault() => ble.sendCommand('RESET_FAULT');
@@ -206,8 +224,13 @@ class AppState extends ChangeNotifier {
   /// Switches relay [n] (1 = DUT relay, 2-4 = auxiliary). The Nano decides
   /// whether to honor it (e-stop/fault/supply gating); the real state comes
   /// back in the next status notification.
-  Future<void> setRelay(int n, bool on) =>
-      ble.sendCommand('RELAY:$n,${on ? 1 : 0}');
+  Future<void> setRelay(int n, bool on) async {
+    await ble.sendCommand('RELAY:$n,${on ? 1 : 0}');
+    if (isClassic && n >= 1 && n <= 4) {
+      _classicRelays[n - 1] = on;
+      notifyListeners();
+    }
+  }
 
   /// Cycles relay [n] on/off 3x on the Nano; the outcome arrives as a
   /// `relay_<n>` entry on the Results screen.
@@ -264,6 +287,14 @@ class AppState extends ChangeNotifier {
   Future<void> allOutputsOff() async {
     await ble.sendCommand('POWER_OFF');
     await ble.sendCommand('STOP_TEST');
+    _clearClassicRelays();
+  }
+
+  void _clearClassicRelays() {
+    for (var i = 0; i < _classicRelays.length; i++) {
+      _classicRelays[i] = false;
+    }
+    notifyListeners();
   }
 
   Future<void> setPin(String newPin) async {

@@ -54,15 +54,22 @@ KWP framing/echo stripping, then returns text.
 
 ### V2 Bluetooth Classic firmware
 
-The V2 board (`TIFF_TESTER_V2`) has no diagnostics engine, auxiliary relays,
-relay polarity control, temperature/position or readiness flags, and its
-sketch is not in this repo, so none of this can be added from here. The app
-detects a V2 connection and handles it explicitly instead of failing per tap:
-the Diagnostics screen shows a banner and disables its controls, the Controls
-screen disables relays 2-4 / relay tests / polarity with an explanation, and
-the Live Data card shows `n/a` (not zero or NOT READY) for the fields V2 does
-not report. Supporting diagnostics on V2 would need its protocol (or the V2
-source) added to the repo.
+The V2 firmware ([`ESP32_Firmware_V2`](../ESP32_Firmware_V2/README.md)) has no
+diagnostics engine: it only checks that the MCP2515 answers a reset and opens
+the K-Line UART. The app detects a V2 connection and says so instead of
+failing per tap:
+
+- **Diagnostics screen:** banner + controls disabled.
+- **Relays:** V2 *does* have Nano relays 1-4 (`RELAY1_ON` ... `RELAY4_OFF`),
+  and the app maps its relay switches onto them. V2 reports no relay state, so
+  the switches show the **last command sent**, not a measurement. Relay tests
+  and polarity control exist only on the BLE firmware.
+- **Live Data:** position, INA219, CAN, K-LINE and system state are shown (V2
+  reports them). **Temperature shows n/a** because V2's `TEMP` is a raw ADC
+  voltage placeholder, not degrees C.
+
+Supporting CAN/UDS/KWP on V2 would mean porting the diagnostics engine into
+that sketch, which is a separate piece of work.
 
 ## CAN clock
 

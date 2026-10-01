@@ -25,6 +25,9 @@ class ControlsScreen extends StatelessWidget {
     // Relays 2-4, relay tests and polarity exist only on the BLE firmware.
     final extended = connected && !app.isClassic;
     final status = app.nanoStatus;
+    final relayStates = app.relayStates;
+    // V2: Nano relays 1-4 (command-only). BLE firmware: DUT relay above + aux 2-4.
+    final firstAuxRelay = app.isClassic ? 1 : 2;
 
     return Scaffold(
       appBar: AppBar(title: const Text('CONTROLS')),
@@ -98,30 +101,34 @@ class ControlsScreen extends StatelessWidget {
               children: [
                 Text(
                   app.isClassic
-                      ? 'Not available: the connected V2 Bluetooth Classic '
-                          'board only has the DUT relay. Connect to the BLE '
-                          'firmware for relays 2-4.'
+                      ? 'V2 board: relays 1-4 are driven by the Nano. The V2 '
+                          'firmware reports no relay state, so these switches '
+                          'show the last command sent, not a measurement. '
+                          'Relay tests need the BLE firmware.'
                       : 'Separate from the DUT relay above — these drive other '
                           'bench outputs, not the device under test. All turn off '
                           'on e-stop, any fault, link loss and ALL OUTPUTS OFF.',
                   style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                 ),
                 const SizedBox(height: 8),
-                for (var n = 2; n <= 4; n++)
+                for (var n = firstAuxRelay; n <= 4; n++)
                   _RelayRow(
                     n: n,
-                    on: status.relays[n - 1],
-                    enabled: extended,
+                    on: relayStates[n - 1],
+                    enabled: connected,
+                    testEnabled: extended,
                     onSet: (on) => _setRelay(context, app, n, on),
                     onTest: () => _testRelay(context, app, n),
                   ),
                 const SizedBox(height: 4),
-                const Text(
-                  'Relays 2-4 have no feedback sensor, so TEST reports '
-                  'ACTUATED (cycles completed) — confirm the click or load '
-                  'yourself.',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                ),
+                if (!app.isClassic)
+                  const Text(
+                    'Relays 2-4 have no feedback sensor, so TEST reports '
+                    'ACTUATED (cycles completed) — confirm the click or load '
+                    'yourself.',
+                    style:
+                        TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  ),
               ],
             ),
           ),
@@ -132,9 +139,11 @@ class ControlsScreen extends StatelessWidget {
               children: [
                 StatusRow(
                   label: 'All four relays',
-                  value: status.relayActiveLow
-                      ? 'ACTIVE-LOW (LOW = ON)'
-                      : 'ACTIVE-HIGH (HIGH = ON)',
+                  value: app.isClassic
+                      ? 'n/a (V2 firmware)'
+                      : (status.relayActiveLow
+                          ? 'ACTIVE-LOW (LOW = ON)'
+                          : 'ACTIVE-HIGH (HIGH = ON)'),
                 ),
                 const SizedBox(height: 8),
                 OutlinedButton(
@@ -268,6 +277,7 @@ class _RelayRow extends StatelessWidget {
   final int n;
   final bool on;
   final bool enabled;
+  final bool testEnabled;
   final ValueChanged<bool> onSet;
   final VoidCallback onTest;
 
@@ -275,6 +285,7 @@ class _RelayRow extends StatelessWidget {
     required this.n,
     required this.on,
     required this.enabled,
+    required this.testEnabled,
     required this.onSet,
     required this.onTest,
   });
@@ -299,7 +310,7 @@ class _RelayRow extends StatelessWidget {
         Switch(value: on, onChanged: enabled ? onSet : null),
         const SizedBox(width: 8),
         OutlinedButton(
-          onPressed: enabled ? onTest : null,
+          onPressed: testEnabled ? onTest : null,
           child: const Text('TEST'),
         ),
       ],

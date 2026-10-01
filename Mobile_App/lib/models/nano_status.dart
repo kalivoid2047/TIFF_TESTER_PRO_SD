@@ -33,6 +33,11 @@ class NanoStatus {
   /// the firmware default. Applies to all four relays.
   final bool relayActiveLow;
 
+  /// False when the firmware's temperature value isn't degrees C (the V2
+  /// Bluetooth Classic firmware reports a raw ADC voltage placeholder), so
+  /// the UI shows n/a instead of a misleading number.
+  final bool tempReported;
+
   const NanoStatus({
     required this.relay,
     required this.fault,
@@ -50,6 +55,7 @@ class NanoStatus {
     this.inaReady = false,
     this.systemReady = false,
     this.relayActiveLow = true,
+    this.tempReported = true,
   });
 
   const NanoStatus.unknown()
@@ -68,7 +74,8 @@ class NanoStatus {
         klineReady = false,
         inaReady = false,
         systemReady = false,
-        relayActiveLow = true;
+        relayActiveLow = true,
+        tempReported = true;
 
   factory NanoStatus.fromJson(Map<String, dynamic> json) {
     return NanoStatus(

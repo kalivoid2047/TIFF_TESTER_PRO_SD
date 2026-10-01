@@ -183,8 +183,9 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                 padding: const EdgeInsets.all(12),
                 child: const Text(
                   'Diagnostics need the BLE firmware (TiffTester). The '
-                  'connected V2 Bluetooth Classic board has no diagnostics '
-                  'engine, so these controls are disabled.',
+                  'connected V2 Bluetooth Classic firmware only checks the '
+                  'MCP2515 and opens the K-Line UART — it has no CAN/UDS/KWP '
+                  'engine — so these controls are disabled.',
                   style: TextStyle(color: AppColors.warning, fontSize: 12),
                 ),
               ),

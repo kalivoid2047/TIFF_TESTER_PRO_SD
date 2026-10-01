@@ -6,7 +6,8 @@ import 'package:flutter_bluetooth_classic_serial/flutter_bluetooth_classic.dart'
 import '../models/nano_status.dart';
 
 /// Bluetooth Classic (SPP/RFCOMM) link for the V2.x "Bluetooth-only"
-/// firmware (`TIFF_TESTER_PRO_V2_ESP32.ino`, advertised as `TIFF_TESTER_V2`).
+/// firmware (`ESP32_Firmware_V2/TIFF_TESTER_PRO_V2_ESP32.ino`, advertised as
+/// `TIFF_TESTER_V2`; see ESP32_Firmware_V2/README.md).
 /// That firmware speaks newline-terminated text commands (`STATUS`,
 /// `POWER_ON`, `LIST_MODULES`, ...) instead of the BLE GATT contract in
 /// Documentation/API_PROTOCOL_SPEC.md, so this class translates between the
@@ -145,6 +146,12 @@ class TiffClassicLink {
       currentA: num_('CURRENT'),
       faultText: fault == 'NO' ? '' : fault,
       systemReady: fault == 'NO' && (kv['WATCHDOG'] ?? 'OK') == 'OK',
+      positionPct: num_('POSITION'),
+      canReady: kv['CAN'] == 'READY',
+      klineReady: kv['KLINE'] == 'READY',
+      inaReady: kv['INA219'] == 'READY',
+      // V2's TEMP is a raw ADC voltage placeholder, not degrees C.
+      tempReported: false,
     );
   }
 
