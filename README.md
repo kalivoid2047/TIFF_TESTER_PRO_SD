@@ -79,6 +79,7 @@ Full project documentation lives in [`Documentation/`](Documentation/):
 - [API_PROTOCOL_SPEC.md](Documentation/API_PROTOCOL_SPEC.md) — BLE/Wi-Fi/UART
   protocol contracts
 - [ROADMAP.md](Documentation/ROADMAP.md) — phased development roadmap
+- [BRINGUP_CHECKLIST.md](Documentation/BRINGUP_CHECKLIST.md) — hardware bring-up checklist for the bench
 - [PINOUT_AND_WIRING.txt](Documentation/PINOUT_AND_WIRING.txt) — inter-
   controller and sensor wiring
 
