@@ -2,6 +2,9 @@
   TIFF_TESTER_PRO_SD - Arduino Nano Safety / I/O Controller
 
   FAIL-SAFE PRINCIPLE:
+    - E-stop is fail-safe against a broken wire: a NORMALLY-CLOSED contact
+      between D3 and GND. Pressing it, or any broken/unplugged wire, opens the
+      circuit and the pull-up reads HIGH = e-stop (see ESTOP_FAILSAFE_NC).
     - Relay OFF at boot.
     - Relay OFF when ESP32 heartbeat is lost.
     - Relay OFF on emergency stop.
@@ -73,6 +76,30 @@
 // ---------- Pins ----------
 #define RELAY_PIN        4
 #define ESTOP_PIN        3
+
+// E-stop wiring.
+//   1 (default, FAIL-SAFE): a NORMALLY-CLOSED contact between D3 and GND. While
+//     healthy the circuit is closed and D3 reads LOW. Pressing the e-stop, a
+//     broken wire, or an unplugged connector all open the circuit, the internal
+//     pull-up takes D3 HIGH, and that counts as an e-stop. A board with NO
+//     e-stop fitted therefore sits in ESTOP until D3 is jumpered to GND.
+//   0 (legacy): a normally-open contact from D3 to GND, LOW = pressed. NOT
+//     fail-safe: a broken or unplugged wire reads "not pressed" and is never
+//     detected.
+// One electrical input cannot tell "pressed" from "wire broken"; both read as
+// an e-stop. Use a short run (or an external 4.7-10 k pull-up to 5 V) in noisy
+// environments.
+#define ESTOP_FAILSAFE_NC  1
+
+// True when the e-stop is active (pressed, or - in fail-safe mode - the wire is
+// broken). Every e-stop check in this sketch goes through here.
+bool estopActive() {
+#if ESTOP_FAILSAFE_NC
+  return digitalRead(ESTOP_PIN) == HIGH;
+#else
+  return digitalRead(ESTOP_PIN) == LOW;
+#endif
+}
 #define BUZZER_PIN       6
 #define AUX_RELAY2_PIN   5
 #define AUX_RELAY3_PIN   7
@@ -327,7 +354,7 @@ bool safetyOK() {
   currentA = readCurrent();
   tempC = adcVoltage(TEMP_PIN) * TEMP_C_PER_V;
 
-  if (digitalRead(ESTOP_PIN) == LOW) {
+  if (estopActive()) {
     relayOff("ESTOP");
     return false;
   }
@@ -407,7 +434,7 @@ void abortRelayTest(const char *detail) {
 // on a bench without 12 V). They still refuse on e-stop, a latched fault, or
 // supply overvoltage.
 bool auxMaySwitchOn() {
-  if (digitalRead(ESTOP_PIN) == LOW) { relayOff("ESTOP"); return false; }
+  if (estopActive()) { relayOff("ESTOP"); return false; }
   if (fault) return false;
   if (supplyV > limMaxSupplyV) { relayOff("OVERVOLTAGE"); return false; }
   return true;
@@ -568,7 +595,7 @@ void sendStatus() {
   Serial.print(",");
   Serial.print(fault ? 1 : 0);
   Serial.print(",");
-  Serial.print(digitalRead(ESTOP_PIN) == LOW ? 1 : 0);
+  Serial.print(estopActive() ? 1 : 0);
   Serial.print(",");
   Serial.print(1); // Nano watchdog supervision active
   Serial.print(",");
@@ -973,7 +1000,7 @@ void loop() {
     }
   }
 
-  if (digitalRead(ESTOP_PIN) == LOW) {
+  if (estopActive()) {
     relayOff("ESTOP");
   }
 

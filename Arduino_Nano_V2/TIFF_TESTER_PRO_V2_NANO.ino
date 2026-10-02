@@ -24,7 +24,11 @@
       anything back on - the ESP32 must command it again.
     - "ON" commands are ignored until a heartbeat has been seen, while the
       heartbeat is stale, and while the e-stop is pressed.
-    - Optional e-stop input (D3, active LOW, pull-up): forces everything off.
+    - Optional e-stop input on D3, FAIL-SAFE against a broken wire: wire a
+      NORMALLY-CLOSED contact between D3 and GND. Pressing it, or any broken or
+      unplugged wire, opens the circuit and forces everything off. (With
+      ENABLE_ESTOP 1 and nothing connected the Nano sits faulted: jumper D3 to
+      GND if no e-stop is fitted. See ESTOP_FAILSAFE_NC below.)
     - Hardware watchdog resets the Nano if this loop ever locks up.
 
   Polarity (matches the ESP32 sketch header): relay inputs are ACTIVE-LOW
@@ -48,14 +52,19 @@
 // ---------- Configuration ----------
 #define I2C_ADDRESS            0x12     // must match NANO_ADDR in the ESP32 sketch
 #define HEARTBEAT_TIMEOUT_MS   1500UL
-#define ENABLE_ESTOP           1        // set 0 if no e-stop is wired
+#define ENABLE_ESTOP           1        // set 0 only if you accept having NO e-stop
+
+// E-stop wiring: 1 (default, fail-safe) = NORMALLY-CLOSED contact between D3 and
+// GND, healthy = LOW, pressed OR wire broken = HIGH = e-stop. 0 (legacy) =
+// normally-open contact, LOW = pressed, which does NOT detect a broken wire.
+#define ESTOP_FAILSAFE_NC      1
 
 #define RELAY_ACTIVE_LOW       1        // relay modules: LOW = energized
 #define MOSFET_ACTIVE_LOW      0        // MOSFET gates: HIGH = on
 
 // ---------- Pins (same relay pins as the main Nano firmware) ----------
 // I2C is fixed by hardware: SDA = A4, SCL = A5.
-#define ESTOP_PIN    3     // INPUT_PULLUP, LOW = pressed
+#define ESTOP_PIN    3     // INPUT_PULLUP; see ESTOP_FAILSAFE_NC
 #define STATUS_LED   13
 
 const uint8_t OUTPUT_PINS[6] = {
@@ -106,7 +115,11 @@ static void allOff() {
 
 static bool estopPressed() {
 #if ENABLE_ESTOP
+#if ESTOP_FAILSAFE_NC
+  return digitalRead(ESTOP_PIN) == HIGH;   // open circuit (pressed/broken wire)
+#else
   return digitalRead(ESTOP_PIN) == LOW;
+#endif
 #else
   return false;
 #endif

@@ -24,7 +24,7 @@ the DUT" past an unexplained result.
 - [ ] Multimeter (trusted), and ideally an oscilloscope or logic analyser
 - [ ] Known resistive loads: ~12 Ω (about 1 A) and ~5 Ω (about 2.4 A, 29 W rating or better)
 - [ ] A fuse in the supply feed, sized below the wiring rating
-- [ ] A working e-stop switch wired to the Nano (see Part 1 - note which kind of contact the firmware expects)
+- [ ] A working **normally-closed (NC)** e-stop switch, wired to the Nano (see Part 1)
 - [ ] USB cables for the Nano and the ESP32, a laptop with the Arduino IDE
 - [ ] An Android phone with the app installed (build from `Mobile_App/`)
 - [ ] A FAT32 microSD card
@@ -49,8 +49,9 @@ Do all of this with **everything unplugged**.
 
 **Nano pin map** (continuity check each)
 - [ ] D4 relay 1 (DUT), D5 relay 2, D7 relay 3, D8 relay 4
-- [ ] D3 e-stop: the pin has a pull-up and the firmware treats **LOW as "pressed"**, so the e-stop is a **normally-open contact that shorts D3 to ground when pressed**. A normally-closed contact wired to ground would read "pressed" permanently and block everything.
-- [ ] Be aware this is **not fail-safe against a broken or unplugged e-stop wire**: an open circuit reads HIGH = "not pressed" and is not detected. If you need wire-break safety, use an e-stop that also physically cuts the relay-coil supply.
+- [ ] D3 e-stop, **fail-safe wiring:** a **normally-closed** contact between D3 and GND. Closed = healthy = D3 LOW. Pressing the e-stop **or any broken/unplugged wire** opens the circuit, the pull-up takes D3 HIGH, and the Nano treats that as an e-stop (`ESTOP_FAILSAFE_NC 1`, the default).
+- [ ] **No e-stop fitted?** The Nano will sit in `ESTOP` and refuse everything. Jumper D3 to GND instead of leaving it open. (Building with `ESTOP_FAILSAFE_NC 0` restores the old normally-open behaviour, which does not detect a broken wire - not recommended.)
+- [ ] A pressed e-stop and a broken wire look identical to the firmware (both read HIGH). For long or noisy runs, add an external 4.7-10 k pull-up from D3 to 5 V and keep the wire short.
 - [ ] D6 buzzer, D13 status LED
 - [ ] A0 DUT voltage, A1 supply voltage (both through a divider, default ratio **4:1**, so 20 V full scale on the 5 V ADC)
 - [ ] A2 current sensor output (ACS712 5 A assumed: ~2.5 V at zero, ~185 mV/A)
@@ -110,15 +111,17 @@ ending. The Nano prints `STATUS,...`, `EXT,...` and `LIMITS,...` lines every
 
 **3.1 Boot state**
 - [ ] All four relays are **OFF** at power-up (relay LEDs dark, no click). If any relay is ON at boot, the polarity is wrong: send `SET_RELAY_POLARITY,0` for an active-high module (the default is active-low), power-cycle, and re-check. Do not continue until all four are off at boot.
-- [ ] `STATUS` returns `STATUS,0,0,0,1,<supply>,<dut>,<current>,` (relay 0, fault 0, estop 0, watchdog 1)
+- [ ] With the e-stop circuit closed (the NC contact or a D3-to-GND jumper in place), `STATUS` returns `STATUS,0,0,0,1,<supply>,<dut>,<current>,` (relay 0, fault 0, estop 0, watchdog 1). If you see estop `1` and fault `ESTOP` instead, D3 is open: that is the fail-safe working, so fit the jumper or the e-stop.
 - [ ] `EXT,0,0,0,0,<temp>,1` (last field `1` = active-low) and `LIMITS,11.00,15.00,5.00,0.0,0`
 - [ ] `GET_CONFIG` returns `CONFIG,4.0000,4.0000,2.5000,0.1850,1,0` (the last `0` = not calibrated yet)
 
 **3.2 E-stop**
+- [ ] E-stop circuit closed (not pressed): `STATUS` shows estop `0` and `POWER_ON` works
 - [ ] Press the e-stop: `STATUS` shows estop `1` and fault text `ESTOP`; buzzer sounds
 - [ ] With it pressed, `POWER_ON` does **not** energise relay 1
 - [ ] Release it and send `RESET_FAULT`: fault clears, buzzer stops
-- [ ] Unplug the e-stop wire (open circuit) and note the state: ______. Expected: **"not pressed"** (the pull-up), meaning a broken e-stop wire is not detected - see Part 1.
+- [ ] **Wire-break test:** with relay 1 on (keep sending `HEARTBEAT`), disconnect one e-stop wire: relay 1 and every aux relay drop at once, fault `ESTOP`, buzzer sounds. Reconnect and `RESET_FAULT`.
+- [ ] **Open at boot:** power-cycle the Nano with the e-stop wire disconnected: it comes up already faulted `ESTOP` with every relay off.
 
 **3.3 Calibration** (uses a trusted meter; the defaults are placeholders)
 - [ ] Measure the supply at the divider input with the meter: ______ V; send `CAL_SUPPLY,<that value>`
@@ -229,7 +232,9 @@ bench supply current limit set to about twice the module's expected current.
 
 Decide how you will handle each before relying on the bench:
 
-- **Broken e-stop wire is not detected** (open circuit reads "not pressed").
+- **E-stop cannot tell "pressed" from "wire broken"** - both read as an e-stop
+  (that is the fail-safe design). A board with no e-stop fitted needs D3
+  jumpered to GND.
 - **A BLE disconnect does not turn the DUT off.** Only loss of the ESP32 itself
   (heartbeat) or a protection trip does.
 - **Nano TX to ESP32 RX voltage level** is not specified in the wiring doc; the
@@ -278,13 +283,13 @@ Separate hardware path: `ESP32_Firmware_V2/` with the I2C Nano in
 `Arduino_Nano_V2/`. See [../ESP32_Firmware_V2/README.md](../ESP32_Firmware_V2/README.md).
 
 - [ ] **I2C levels:** ESP32 is 3.3 V, Nano is 5 V. Fit a bidirectional level shifter (or 3.3 V pull-ups). The Nano V2 sketch turns its internal pull-ups off. Never connect SDA/SCL directly with 5 V pull-ups.
-- [ ] Nano V2 pins: relays D4/D5/D7/D8 (active-low), MOSFETs D9/D10 (active-high), e-stop D3, I2C on A4/A5. All outputs are **off at boot**.
+- [ ] Nano V2 pins: relays D4/D5/D7/D8 (active-low), MOSFETs D9/D10 (active-high), e-stop D3 (normally-closed contact to GND; jumper it if none fitted), I2C on A4/A5. All outputs are **off at boot**.
 - [ ] I2C address 0x12 shows up on an I2C scan
 - [ ] ESP32 V2 serial boot: `Bluetooth: READY`, `INA219: READY`, `SD Card: READY`, `Nano: ONLINE`
 - [ ] Pair `TIFF_TESTER_V2` in Android Bluetooth settings (no PIN), then connect from the app
 - [ ] `RELAY2_ON` replies `OK|RELAY2=ON|CONFIRMED`; `STATUS` shows `R2=ON`
 - [ ] Unplug the Nano's I2C: `NANO_OFFLINE`, status shows relays `UNKNOWN`
-- [ ] Press the Nano e-stop: ON commands come back `NOT_CONFIRMED`, a running test faults with `NANO_FAULT`
+- [ ] Press the Nano e-stop (or disconnect its wire): ON commands come back `NOT_CONFIRMED`, a running test faults with `NANO_FAULT`
 - [ ] Stop the ESP32 while a Nano relay is on: it drops after about 1.5 s
 - [ ] `VALIDATE_MODULE` needs the V2 module format (flat `KEY=VALUE`, e.g. `COMM`, `CAN_SPEED`), **not** the main firmware's `[SECTION]` format
 - [ ] V2 temperature is a raw ADC voltage, not °C (the app shows n/a)

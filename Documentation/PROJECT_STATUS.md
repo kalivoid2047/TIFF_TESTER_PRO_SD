@@ -187,7 +187,7 @@ consumed by the ESP32 firmware (see above), not just stored as text.
 | DUT current ADC | GPIO35 | A2 |
 | Supply voltage ADC | GPIO32 | A1 |
 | DUT relay driver | — | D4 |
-| Emergency stop | — | D3 (INPUT_PULLUP) |
+| Emergency stop | — | D3 (INPUT_PULLUP, normally-closed contact to GND, fail-safe on wire break) |
 | Buzzer | — | D6 |
 | Status LED | — | D13 |
 | Temp/spare | — | A3 |

@@ -31,7 +31,14 @@ D4  = DUT relay driver (relay 1)
 D5  = Auxiliary relay 2 driver
 D7  = Auxiliary relay 3 driver
 D8  = Auxiliary relay 4 driver
-D3  = Emergency stop input (INPUT_PULLUP)
+D3  = Emergency stop input (INPUT_PULLUP). FAIL-SAFE wiring: a NORMALLY-CLOSED
+      contact between D3 and GND. Closed = healthy (D3 LOW). Pressing it, or any
+      broken/unplugged wire, opens the circuit; the pull-up reads HIGH and the
+      Nano treats that as an e-stop. With NO e-stop fitted, jumper D3 to GND or
+      the Nano stays in ESTOP. (ESTOP_FAILSAFE_NC 0 in the sketch restores the
+      old normally-open, LOW = pressed behaviour, which cannot detect a broken
+      wire.) A pressed e-stop and a broken wire look identical to the firmware.
+      For long or noisy runs add an external 4.7-10 k pull-up from D3 to 5 V.
 D6  = Buzzer
 D13 = Status LED
 A0  = DUT voltage

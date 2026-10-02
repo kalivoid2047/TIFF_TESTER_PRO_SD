@@ -68,7 +68,8 @@ address 0x12: `0x01` get status (then reads 1 byte back; `0xFF` = no answer),
 stops answering.
 
 Nano pins: relays 1-4 on D4/D5/D7/D8 (active-LOW), MOSFETs 1-2 on D9/D10
-(active-HIGH), optional e-stop on D3 (active-LOW, pull-up), status LED D13,
+(active-HIGH), e-stop on D3 (normally-closed contact to GND with the pull-up;
+pressed or broken wire = e-stop; jumper D3 to GND if none is fitted), status LED D13,
 I2C on A4 (SDA) / A5 (SCL). The status byte returned is: bits 0-3 relays, bits
 4-5 MOSFETs, bit 6 fault (heartbeat lost or e-stop), bit 7 always 0 (so it can
 never equal 0xFF). **V2.2.1 of the ESP32 sketch decodes this byte** and reports relay/MOSFET
