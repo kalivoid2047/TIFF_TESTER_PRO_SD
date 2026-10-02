@@ -80,6 +80,7 @@ Full project documentation lives in [`Documentation/`](Documentation/):
   protocol contracts
 - [ROADMAP.md](Documentation/ROADMAP.md) — phased development roadmap
 - [BRINGUP_CHECKLIST.md](Documentation/BRINGUP_CHECKLIST.md) — hardware bring-up checklist for the bench
+- [WIRING_DIAGRAM.md](Documentation/WIRING_DIAGRAM.md) — bench wiring diagrams (main system and V2) with connection tables
 - [PINOUT_AND_WIRING.txt](Documentation/PINOUT_AND_WIRING.txt) — inter-
   controller and sensor wiring
 

@@ -40,6 +40,8 @@ the DUT" past an unexplained result.
 
 ## Part 1 - Unpowered inspection
 
+Build and check against the wiring diagrams: [WIRING_DIAGRAM.md](WIRING_DIAGRAM.md).
+
 Do all of this with **everything unplugged**.
 
 **Ground and power**

@@ -1,0 +1,543 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1700 1300" width="1700" height="1300" font-family="Segoe UI, Arial, sans-serif" role="img"><title>TIFF TESTER PRO V2 - bench wiring (Bluetooth Classic line)</title><desc>Wiring diagram for the V2 bench: ESP32 with the DUT relay on GPIO27, INA219, Nano V2 I2C output controller behind a level shifter, relay and MOSFET modules, SD, MCP2515 and K-Line.</desc><rect width="1700" height="1300" fill="#ffffff"/>
+<text xml:space="preserve" x="40" y="26" font-size="17" font-weight="bold" fill="#1b2631" text-anchor="start">TIFF TESTER PRO V2 - bench wiring (Bluetooth Classic line: ESP32 V2.2.1 + Nano V2)</text>
+<text xml:space="preserve" x="40" y="46" font-size="11" font-weight="normal" fill="#566573" text-anchor="start" font-style="italic">Separate hardware path from the main system (see ESP32_Firmware_V2/README.md). Resistor values are examples except the supply divider, which matches the sketch (4.7037:1).</text>
+<text xml:space="preserve" x="40" y="82" font-size="12" font-weight="bold" fill="#c0392b" text-anchor="start">POWER PATH  (12 V, fused)</text>
+<rect x="40" y="90" width="150" height="100" rx="6" fill="#fdfefe" stroke="#34495e" stroke-width="1.6"/>
+<text xml:space="preserve" x="115.0" y="107" font-size="12.5" font-weight="bold" fill="#1b2631" text-anchor="middle">12 V BENCH SUPPLY</text>
+<text xml:space="preserve" x="115.0" y="121" font-size="10" font-weight="normal" fill="#566573" text-anchor="middle" font-style="italic">current limit 1 A to start</text>
+<circle cx="190" cy="140" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="182" y="144" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">+12 V</text>
+<circle cx="190" cy="166" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="182" y="170" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">GND</text>
+<rect x="225" y="128" width="60" height="24" rx="4" fill="#fdf2e9" stroke="#c0392b" stroke-width="1.6"/>
+<text xml:space="preserve" x="255" y="144" font-size="11" font-weight="bold" fill="#1b2631" text-anchor="middle">FUSE</text>
+<polyline points="190,140 225,140" fill="none" stroke="#c0392b" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="285,140 340,140" fill="none" stroke="#c0392b" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="340" cy="140" r="4.5" fill="#c0392b"/>
+<polyline points="190,166 198,166" fill="none" stroke="#2c3e50" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="198" y="157" width="33.6" height="18" rx="3" fill="#fff" stroke="#2c3e50" stroke-width="1.5"/>
+<text xml:space="preserve" x="214.8" y="170" font-size="10.5" font-weight="bold" fill="#2c3e50" text-anchor="middle">GND</text>
+<rect x="310" y="210" width="150" height="92" rx="6" fill="#fdfefe" stroke="#34495e" stroke-width="1.6"/>
+<text xml:space="preserve" x="385.0" y="227" font-size="12.5" font-weight="bold" fill="#1b2631" text-anchor="middle">SUPPLY DIVIDER</text>
+<text xml:space="preserve" x="385.0" y="241" font-size="10" font-weight="normal" fill="#566573" text-anchor="middle" font-style="italic">100k / 27k = 4.70:1</text>
+<circle cx="310" cy="264" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="318" y="268" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">IN</text>
+<circle cx="460" cy="264" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="452" y="268" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">OUT</text>
+<circle cx="460" cy="284" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="452" y="288" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">GND</text>
+<polyline points="340,140 340,185 290,185 290,264 310,264" fill="none" stroke="#c0392b" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="460,264 468,264" fill="none" stroke="#566573" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="468" y="255" width="62.4" height="18" rx="3" fill="#fff" stroke="#566573" stroke-width="1.5"/>
+<text xml:space="preserve" x="499.2" y="268" font-size="10.5" font-weight="bold" fill="#566573" text-anchor="middle">ADC_SUP</text>
+<polyline points="460,284 468,284" fill="none" stroke="#2c3e50" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="468" y="275" width="33.6" height="18" rx="3" fill="#fff" stroke="#2c3e50" stroke-width="1.5"/>
+<text xml:space="preserve" x="484.8" y="288" font-size="10.5" font-weight="bold" fill="#2c3e50" text-anchor="middle">GND</text>
+<rect x="580" y="90" width="230" height="190" rx="6" fill="#fdfefe" stroke="#34495e" stroke-width="1.6"/>
+<text xml:space="preserve" x="695.0" y="107" font-size="12.5" font-weight="bold" fill="#1b2631" text-anchor="middle">DUT RELAY MODULE</text>
+<text xml:space="preserve" x="695.0" y="121" font-size="10" font-weight="normal" fill="#566573" text-anchor="middle" font-style="italic">ACTIVE-HIGH: GPIO27 HIGH = on</text>
+<circle cx="580" cy="160" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="588" y="164" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">IN</text>
+<circle cx="810" cy="150" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="802" y="154" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">COM</text>
+<circle cx="810" cy="172" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="802" y="176" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">NO</text>
+<circle cx="650" cy="280" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="650" y="274" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">VCC</text>
+<circle cx="700" cy="280" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="700" y="274" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">GND</text>
+<polyline points="580,160 572,160" fill="none" stroke="#2471a3" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="495.2" y="151" width="76.8" height="18" rx="3" fill="#fff" stroke="#2471a3" stroke-width="1.5"/>
+<text xml:space="preserve" x="533.6" y="164" font-size="10.5" font-weight="bold" fill="#2471a3" text-anchor="middle">DUT_RELAY</text>
+<polyline points="650,280 650,288" fill="none" stroke="#e67e22" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="636.8" y="288" width="26.4" height="18" rx="3" fill="#fff" stroke="#e67e22" stroke-width="1.5"/>
+<text xml:space="preserve" x="650" y="301" font-size="10.5" font-weight="bold" fill="#e67e22" text-anchor="middle">5V</text>
+<polyline points="700,280 700,288" fill="none" stroke="#2c3e50" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="683.2" y="288" width="33.6" height="18" rx="3" fill="#fff" stroke="#2c3e50" stroke-width="1.5"/>
+<text xml:space="preserve" x="700" y="301" font-size="10.5" font-weight="bold" fill="#2c3e50" text-anchor="middle">GND</text>
+<polyline points="340,140 340,66 850,66 850,150 810,150" fill="none" stroke="#c0392b" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/>
+<text xml:space="preserve" x="560" y="322" font-size="10" font-weight="normal" fill="#c0392b" text-anchor="start" font-style="italic">the DUT relay is driven by the ESP32 (GPIO27), not the Nano</text>
+<rect x="900" y="110" width="170" height="130" rx="6" fill="#fdfefe" stroke="#34495e" stroke-width="1.6"/>
+<text xml:space="preserve" x="985.0" y="127" font-size="12.5" font-weight="bold" fill="#1b2631" text-anchor="middle">INA219 (required)</text>
+<text xml:space="preserve" x="985.0" y="141" font-size="10" font-weight="normal" fill="#566573" text-anchor="middle" font-style="italic">0.1 ohm shunt, addr 0x40</text>
+<circle cx="900" cy="172" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="908" y="176" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">VIN+</text>
+<circle cx="1070" cy="172" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1062" y="176" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">VIN-</text>
+<circle cx="930" cy="240" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="930" y="234" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">VCC</text>
+<circle cx="965" cy="240" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="965" y="234" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">GND</text>
+<circle cx="1005" cy="240" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1005" y="234" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">SDA</text>
+<circle cx="1040" cy="240" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1040" y="234" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">SCL</text>
+<polyline points="810,172 900,172" fill="none" stroke="#c0392b" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="930,240 930,248" fill="none" stroke="#d35400" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="913.2" y="248" width="33.6" height="18" rx="3" fill="#fff" stroke="#d35400" stroke-width="1.5"/>
+<text xml:space="preserve" x="930" y="261" font-size="10.5" font-weight="bold" fill="#d35400" text-anchor="middle">3V3</text>
+<polyline points="965,240 965,248" fill="none" stroke="#2c3e50" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="948.2" y="248" width="33.6" height="18" rx="3" fill="#fff" stroke="#2c3e50" stroke-width="1.5"/>
+<text xml:space="preserve" x="965" y="261" font-size="10.5" font-weight="bold" fill="#2c3e50" text-anchor="middle">GND</text>
+<polyline points="1005,240 1005,248" fill="none" stroke="#117a65" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="988.2" y="248" width="33.6" height="18" rx="3" fill="#fff" stroke="#117a65" stroke-width="1.5"/>
+<text xml:space="preserve" x="1005" y="261" font-size="10.5" font-weight="bold" fill="#117a65" text-anchor="middle">SDA</text>
+<polyline points="1040,240 1040,248" fill="none" stroke="#117a65" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1023.2" y="248" width="33.6" height="18" rx="3" fill="#fff" stroke="#117a65" stroke-width="1.5"/>
+<text xml:space="preserve" x="1040" y="261" font-size="10.5" font-weight="bold" fill="#117a65" text-anchor="middle">SCL</text>
+<rect x="1300" y="110" width="220" height="225" rx="6" fill="#fdfefe" stroke="#34495e" stroke-width="1.6"/>
+<text xml:space="preserve" x="1410.0" y="127" font-size="12.5" font-weight="bold" fill="#1b2631" text-anchor="middle">DEVICE UNDER TEST</text>
+<text xml:space="preserve" x="1410.0" y="141" font-size="10" font-weight="normal" fill="#566573" text-anchor="middle" font-style="italic">dummy load first</text>
+<circle cx="1300" cy="172" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1308" y="176" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">V+</text>
+<circle cx="1300" cy="200" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1308" y="204" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">GND</text>
+<circle cx="1300" cy="235" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1308" y="239" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">CAN_H</text>
+<circle cx="1300" cy="260" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1308" y="264" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">CAN_L</text>
+<circle cx="1300" cy="290" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1308" y="294" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">K-LINE</text>
+<circle cx="1300" cy="315" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1308" y="319" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">POS/SENSOR</text>
+<polyline points="1070,172 1300,172" fill="none" stroke="#c0392b" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1300,200 1292,200" fill="none" stroke="#2c3e50" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1258.4" y="191" width="33.6" height="18" rx="3" fill="#fff" stroke="#2c3e50" stroke-width="1.5"/>
+<text xml:space="preserve" x="1275.2" y="204" font-size="10.5" font-weight="bold" fill="#2c3e50" text-anchor="middle">GND</text>
+<polyline points="1300,235 1292,235" fill="none" stroke="#b7950b" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1251.2" y="226" width="40.8" height="18" rx="3" fill="#fff" stroke="#b7950b" stroke-width="1.5"/>
+<text xml:space="preserve" x="1271.6" y="239" font-size="10.5" font-weight="bold" fill="#b7950b" text-anchor="middle">CANH</text>
+<polyline points="1300,260 1292,260" fill="none" stroke="#b7950b" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1251.2" y="251" width="40.8" height="18" rx="3" fill="#fff" stroke="#b7950b" stroke-width="1.5"/>
+<text xml:space="preserve" x="1271.6" y="264" font-size="10.5" font-weight="bold" fill="#b7950b" text-anchor="middle">CANL</text>
+<polyline points="1300,290 1292,290" fill="none" stroke="#6c3483" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1266" y="281" width="26" height="18" rx="3" fill="#fff" stroke="#6c3483" stroke-width="1.5"/>
+<text xml:space="preserve" x="1279.0" y="294" font-size="10.5" font-weight="bold" fill="#6c3483" text-anchor="middle">K</text>
+<polyline points="1300,315 1292,315" fill="none" stroke="#566573" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1229.6" y="306" width="62.4" height="18" rx="3" fill="#fff" stroke="#566573" stroke-width="1.5"/>
+<text xml:space="preserve" x="1260.8" y="319" font-size="10.5" font-weight="bold" fill="#566573" text-anchor="middle">POS_RAW</text>
+<text xml:space="preserve" x="40" y="408" font-size="12" font-weight="bold" fill="#2471a3" text-anchor="start">CONTROL</text>
+<rect x="430" y="430" width="220" height="330" rx="6" fill="#fdfefe" stroke="#34495e" stroke-width="1.6"/>
+<text xml:space="preserve" x="540.0" y="447" font-size="12.5" font-weight="bold" fill="#1b2631" text-anchor="middle">ARDUINO NANO V2</text>
+<text xml:space="preserve" x="540.0" y="461" font-size="10" font-weight="normal" fill="#566573" text-anchor="middle" font-style="italic">I2C slave 0x12 - output controller</text>
+<circle cx="430" cy="500" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="438" y="504" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">D4</text>
+<circle cx="430" cy="530" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="438" y="534" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">D5</text>
+<circle cx="430" cy="560" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="438" y="564" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">D7</text>
+<circle cx="430" cy="590" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="438" y="594" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">D8</text>
+<circle cx="430" cy="660" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="438" y="664" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">D9</text>
+<circle cx="430" cy="685" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="438" y="689" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">D10</text>
+<circle cx="650" cy="510" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="642" y="514" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">A4 SDA</text>
+<circle cx="650" cy="540" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="642" y="544" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">A5 SCL</text>
+<circle cx="460" cy="760" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="460" y="754" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">5V</text>
+<circle cx="500" cy="760" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="500" y="754" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">GND</text>
+<circle cx="580" cy="760" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="580" y="754" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">D3</text>
+<polyline points="460,760 460,768" fill="none" stroke="#e67e22" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="446.8" y="768" width="26.4" height="18" rx="3" fill="#fff" stroke="#e67e22" stroke-width="1.5"/>
+<text xml:space="preserve" x="460" y="781" font-size="10.5" font-weight="bold" fill="#e67e22" text-anchor="middle">5V</text>
+<polyline points="500,760 500,768" fill="none" stroke="#2c3e50" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="483.2" y="768" width="33.6" height="18" rx="3" fill="#fff" stroke="#2c3e50" stroke-width="1.5"/>
+<text xml:space="preserve" x="500" y="781" font-size="10.5" font-weight="bold" fill="#2c3e50" text-anchor="middle">GND</text>
+<rect x="170" y="430" width="200" height="200" rx="6" fill="#fdfefe" stroke="#34495e" stroke-width="1.6"/>
+<text xml:space="preserve" x="270.0" y="447" font-size="12.5" font-weight="bold" fill="#1b2631" text-anchor="middle">4-CH RELAY MODULE</text>
+<text xml:space="preserve" x="270.0" y="461" font-size="10" font-weight="normal" fill="#566573" text-anchor="middle" font-style="italic">Nano relays 1-4, active-LOW</text>
+<circle cx="170" cy="500" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="178" y="504" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">R1</text>
+<circle cx="170" cy="530" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="178" y="534" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">R2</text>
+<circle cx="170" cy="560" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="178" y="564" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">R3</text>
+<circle cx="170" cy="590" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="178" y="594" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">R4</text>
+<circle cx="370" cy="500" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="362" y="504" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">IN1</text>
+<circle cx="370" cy="530" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="362" y="534" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">IN2</text>
+<circle cx="370" cy="560" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="362" y="564" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">IN3</text>
+<circle cx="370" cy="590" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="362" y="594" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">IN4</text>
+<circle cx="230" cy="630" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="230" y="624" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">VCC</text>
+<circle cx="310" cy="630" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="310" y="624" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">GND</text>
+<polyline points="430,500 370,500" fill="none" stroke="#2471a3" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="430,530 370,530" fill="none" stroke="#2471a3" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="430,560 370,560" fill="none" stroke="#2471a3" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="430,590 370,590" fill="none" stroke="#2471a3" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="170,500 162,500" fill="none" stroke="#2471a3" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="78.0" y="491" width="84.0" height="18" rx="3" fill="#fff" stroke="#2471a3" stroke-width="1.5"/>
+<text xml:space="preserve" x="120.0" y="504" font-size="10.5" font-weight="bold" fill="#2471a3" text-anchor="middle">AUX LOAD 1</text>
+<polyline points="170,530 162,530" fill="none" stroke="#2471a3" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="78.0" y="521" width="84.0" height="18" rx="3" fill="#fff" stroke="#2471a3" stroke-width="1.5"/>
+<text xml:space="preserve" x="120.0" y="534" font-size="10.5" font-weight="bold" fill="#2471a3" text-anchor="middle">AUX LOAD 2</text>
+<polyline points="170,560 162,560" fill="none" stroke="#2471a3" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="78.0" y="551" width="84.0" height="18" rx="3" fill="#fff" stroke="#2471a3" stroke-width="1.5"/>
+<text xml:space="preserve" x="120.0" y="564" font-size="10.5" font-weight="bold" fill="#2471a3" text-anchor="middle">AUX LOAD 3</text>
+<polyline points="170,590 162,590" fill="none" stroke="#2471a3" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="78.0" y="581" width="84.0" height="18" rx="3" fill="#fff" stroke="#2471a3" stroke-width="1.5"/>
+<text xml:space="preserve" x="120.0" y="594" font-size="10.5" font-weight="bold" fill="#2471a3" text-anchor="middle">AUX LOAD 4</text>
+<polyline points="230,630 230,638" fill="none" stroke="#e67e22" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="216.8" y="638" width="26.4" height="18" rx="3" fill="#fff" stroke="#e67e22" stroke-width="1.5"/>
+<text xml:space="preserve" x="230" y="651" font-size="10.5" font-weight="bold" fill="#e67e22" text-anchor="middle">5V</text>
+<polyline points="310,630 310,638" fill="none" stroke="#2c3e50" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="293.2" y="638" width="33.6" height="18" rx="3" fill="#fff" stroke="#2c3e50" stroke-width="1.5"/>
+<text xml:space="preserve" x="310" y="651" font-size="10.5" font-weight="bold" fill="#2c3e50" text-anchor="middle">GND</text>
+<rect x="170" y="665" width="200" height="130" rx="6" fill="#fdfefe" stroke="#34495e" stroke-width="1.6"/>
+<text xml:space="preserve" x="270.0" y="682" font-size="12.5" font-weight="bold" fill="#1b2631" text-anchor="middle">MOSFET MODULE</text>
+<text xml:space="preserve" x="270.0" y="696" font-size="10" font-weight="normal" fill="#566573" text-anchor="middle" font-style="italic">active-HIGH gates</text>
+<circle cx="170" cy="720" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="178" y="724" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">OUT1</text>
+<circle cx="170" cy="745" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="178" y="749" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">OUT2</text>
+<circle cx="370" cy="720" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="362" y="724" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">G1</text>
+<circle cx="370" cy="745" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="362" y="749" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">G2</text>
+<circle cx="270" cy="795" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="270" y="789" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">GND</text>
+<polyline points="430,660 400,660 400,720 370,720" fill="none" stroke="#2471a3" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="430,685 410,685 410,745 370,745" fill="none" stroke="#2471a3" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="170,720 162,720" fill="none" stroke="#2471a3" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="99.6" y="711" width="62.4" height="18" rx="3" fill="#fff" stroke="#2471a3" stroke-width="1.5"/>
+<text xml:space="preserve" x="130.8" y="724" font-size="10.5" font-weight="bold" fill="#2471a3" text-anchor="middle">LOAD M1</text>
+<polyline points="170,745 162,745" fill="none" stroke="#2471a3" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="99.6" y="736" width="62.4" height="18" rx="3" fill="#fff" stroke="#2471a3" stroke-width="1.5"/>
+<text xml:space="preserve" x="130.8" y="749" font-size="10.5" font-weight="bold" fill="#2471a3" text-anchor="middle">LOAD M2</text>
+<polyline points="270,795 270,803" fill="none" stroke="#2c3e50" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="253.2" y="803" width="33.6" height="18" rx="3" fill="#fff" stroke="#2c3e50" stroke-width="1.5"/>
+<text xml:space="preserve" x="270" y="816" font-size="10.5" font-weight="bold" fill="#2c3e50" text-anchor="middle">GND</text>
+<rect x="500" y="840" width="190" height="100" rx="6" fill="#fdfefe" stroke="#34495e" stroke-width="1.6"/>
+<text xml:space="preserve" x="595.0" y="879" font-size="12.5" font-weight="bold" fill="#1b2631" text-anchor="middle">E-STOP (normally CLOSED)</text>
+<text xml:space="preserve" x="595.0" y="893" font-size="10" font-weight="normal" fill="#566573" text-anchor="middle" font-style="italic">no e-stop? jumper D3 to GND</text>
+<circle cx="690" cy="915" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="682" y="919" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">B</text>
+<circle cx="580" cy="840" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="580" y="855" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">A</text>
+<polyline points="580,840 580,800 580,800 580,760" fill="none" stroke="#2471a3" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="690,915 698,915" fill="none" stroke="#2c3e50" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="698" y="906" width="33.6" height="18" rx="3" fill="#fff" stroke="#2c3e50" stroke-width="1.5"/>
+<text xml:space="preserve" x="714.8" y="919" font-size="10.5" font-weight="bold" fill="#2c3e50" text-anchor="middle">GND</text>
+<rect x="720" y="430" width="170" height="170" rx="6" fill="#fdfefe" stroke="#34495e" stroke-width="1.6"/>
+<text xml:space="preserve" x="805.0" y="469" font-size="12.5" font-weight="bold" fill="#1b2631" text-anchor="middle">I2C LEVEL SHIFTER</text>
+<text xml:space="preserve" x="805.0" y="483" font-size="10" font-weight="normal" fill="#566573" text-anchor="middle" font-style="italic">BSS138 type, bidirectional</text>
+<circle cx="720" cy="510" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="728" y="514" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">HV1</text>
+<circle cx="720" cy="540" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="728" y="544" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">HV2</text>
+<circle cx="890" cy="510" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="882" y="514" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">LV1</text>
+<circle cx="890" cy="540" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="882" y="544" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">LV2</text>
+<circle cx="760" cy="430" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="760" y="445" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">HV</text>
+<circle cx="850" cy="430" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="850" y="445" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">LV</text>
+<circle cx="805" cy="600" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="805" y="594" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">GND</text>
+<polyline points="650,510 720,510" fill="none" stroke="#117a65" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="650,540 720,540" fill="none" stroke="#117a65" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="760,430 760,422" fill="none" stroke="#e67e22" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="746.8" y="404" width="26.4" height="18" rx="3" fill="#fff" stroke="#e67e22" stroke-width="1.5"/>
+<text xml:space="preserve" x="760" y="417" font-size="10.5" font-weight="bold" fill="#e67e22" text-anchor="middle">5V</text>
+<polyline points="850,430 850,422" fill="none" stroke="#d35400" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="833.2" y="404" width="33.6" height="18" rx="3" fill="#fff" stroke="#d35400" stroke-width="1.5"/>
+<text xml:space="preserve" x="850" y="417" font-size="10.5" font-weight="bold" fill="#d35400" text-anchor="middle">3V3</text>
+<polyline points="805,600 805,608" fill="none" stroke="#2c3e50" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="788.2" y="608" width="33.6" height="18" rx="3" fill="#fff" stroke="#2c3e50" stroke-width="1.5"/>
+<text xml:space="preserve" x="805" y="621" font-size="10.5" font-weight="bold" fill="#2c3e50" text-anchor="middle">GND</text>
+<rect x="960" y="430" width="230" height="500" rx="6" fill="#fdfefe" stroke="#34495e" stroke-width="1.6"/>
+<text xml:space="preserve" x="1075.0" y="447" font-size="12.5" font-weight="bold" fill="#1b2631" text-anchor="middle">ESP32 V2.2.1</text>
+<text xml:space="preserve" x="1075.0" y="461" font-size="10" font-weight="normal" fill="#566573" text-anchor="middle" font-style="italic">Bluetooth Classic "TIFF_TESTER_V2"</text>
+<circle cx="960" cy="510" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="968" y="514" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">GPIO21 SDA</text>
+<circle cx="960" cy="540" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="968" y="544" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">GPIO22 SCL</text>
+<circle cx="1190" cy="500" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1182" y="504" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">GPIO18 SCK</text>
+<circle cx="1190" cy="525" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1182" y="529" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">GPIO23 MOSI</text>
+<circle cx="1190" cy="550" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1182" y="554" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">GPIO19 MISO</text>
+<circle cx="1190" cy="580" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1182" y="584" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">GPIO13 SD CS</text>
+<circle cx="1190" cy="605" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1182" y="609" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">GPIO5 CAN CS</text>
+<circle cx="1190" cy="655" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1182" y="659" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">GPIO16 K-RX</text>
+<circle cx="1190" cy="680" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1182" y="684" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">GPIO17 K-TX</text>
+<circle cx="1190" cy="740" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1182" y="744" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">GPIO34 ADC</text>
+<circle cx="1190" cy="770" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1182" y="774" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">GPIO36 POS</text>
+<circle cx="1190" cy="800" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1182" y="804" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">GPIO39 TEMP</text>
+<circle cx="1190" cy="850" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1182" y="854" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">GPIO27 RELAY</text>
+<circle cx="1010" cy="930" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1010" y="924" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">5V/VIN</text>
+<circle cx="1075" cy="930" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1075" y="924" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">GND</text>
+<circle cx="1140" cy="930" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1140" y="924" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">3V3</text>
+<polyline points="1010,930 1010,938" fill="none" stroke="#e67e22" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="996.8" y="938" width="26.4" height="18" rx="3" fill="#fff" stroke="#e67e22" stroke-width="1.5"/>
+<text xml:space="preserve" x="1010" y="951" font-size="10.5" font-weight="bold" fill="#e67e22" text-anchor="middle">5V</text>
+<polyline points="1075,930 1075,938" fill="none" stroke="#2c3e50" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1058.2" y="938" width="33.6" height="18" rx="3" fill="#fff" stroke="#2c3e50" stroke-width="1.5"/>
+<text xml:space="preserve" x="1075" y="951" font-size="10.5" font-weight="bold" fill="#2c3e50" text-anchor="middle">GND</text>
+<polyline points="1140,930 1140,938" fill="none" stroke="#d35400" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1123.2" y="938" width="33.6" height="18" rx="3" fill="#fff" stroke="#d35400" stroke-width="1.5"/>
+<text xml:space="preserve" x="1140" y="951" font-size="10.5" font-weight="bold" fill="#d35400" text-anchor="middle">3V3</text>
+<polyline points="890,510 960,510" fill="none" stroke="#117a65" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="890,540 960,540" fill="none" stroke="#117a65" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="925" cy="510" r="4" fill="#117a65"/>
+<polyline points="925,510 925,502" fill="none" stroke="#117a65" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="908.2" y="484" width="33.6" height="18" rx="3" fill="#fff" stroke="#117a65" stroke-width="1.5"/>
+<text xml:space="preserve" x="925" y="497" font-size="10.5" font-weight="bold" fill="#117a65" text-anchor="middle">SDA</text>
+<circle cx="925" cy="540" r="4" fill="#117a65"/>
+<polyline points="925,540 925,548" fill="none" stroke="#117a65" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="908.2" y="548" width="33.6" height="18" rx="3" fill="#fff" stroke="#117a65" stroke-width="1.5"/>
+<text xml:space="preserve" x="925" y="561" font-size="10.5" font-weight="bold" fill="#117a65" text-anchor="middle">SCL</text>
+<polyline points="1190,500 1198,500" fill="none" stroke="#7d3c98" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1198" y="491" width="62.4" height="18" rx="3" fill="#fff" stroke="#7d3c98" stroke-width="1.5"/>
+<text xml:space="preserve" x="1229.2" y="504" font-size="10.5" font-weight="bold" fill="#7d3c98" text-anchor="middle">SPI_SCK</text>
+<polyline points="1190,525 1198,525" fill="none" stroke="#7d3c98" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1198" y="516" width="69.6" height="18" rx="3" fill="#fff" stroke="#7d3c98" stroke-width="1.5"/>
+<text xml:space="preserve" x="1232.8" y="529" font-size="10.5" font-weight="bold" fill="#7d3c98" text-anchor="middle">SPI_MOSI</text>
+<polyline points="1190,550 1198,550" fill="none" stroke="#7d3c98" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1198" y="541" width="69.6" height="18" rx="3" fill="#fff" stroke="#7d3c98" stroke-width="1.5"/>
+<text xml:space="preserve" x="1232.8" y="554" font-size="10.5" font-weight="bold" fill="#7d3c98" text-anchor="middle">SPI_MISO</text>
+<polyline points="1190,580 1198,580" fill="none" stroke="#7d3c98" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1198" y="571" width="48.0" height="18" rx="3" fill="#fff" stroke="#7d3c98" stroke-width="1.5"/>
+<text xml:space="preserve" x="1222.0" y="584" font-size="10.5" font-weight="bold" fill="#7d3c98" text-anchor="middle">SD_CS</text>
+<polyline points="1190,605 1198,605" fill="none" stroke="#7d3c98" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1198" y="596" width="55.2" height="18" rx="3" fill="#fff" stroke="#7d3c98" stroke-width="1.5"/>
+<text xml:space="preserve" x="1225.6" y="609" font-size="10.5" font-weight="bold" fill="#7d3c98" text-anchor="middle">CAN_CS</text>
+<polyline points="1190,655 1198,655" fill="none" stroke="#6c3483" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1198" y="646" width="40.8" height="18" rx="3" fill="#fff" stroke="#6c3483" stroke-width="1.5"/>
+<text xml:space="preserve" x="1218.4" y="659" font-size="10.5" font-weight="bold" fill="#6c3483" text-anchor="middle">K_RX</text>
+<polyline points="1190,680 1198,680" fill="none" stroke="#6c3483" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1198" y="671" width="40.8" height="18" rx="3" fill="#fff" stroke="#6c3483" stroke-width="1.5"/>
+<text xml:space="preserve" x="1218.4" y="684" font-size="10.5" font-weight="bold" fill="#6c3483" text-anchor="middle">K_TX</text>
+<polyline points="1190,740 1198,740" fill="none" stroke="#566573" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1198" y="731" width="62.4" height="18" rx="3" fill="#fff" stroke="#566573" stroke-width="1.5"/>
+<text xml:space="preserve" x="1229.2" y="744" font-size="10.5" font-weight="bold" fill="#566573" text-anchor="middle">ADC_SUP</text>
+<polyline points="1190,770 1198,770" fill="none" stroke="#566573" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1198" y="761" width="33.6" height="18" rx="3" fill="#fff" stroke="#566573" stroke-width="1.5"/>
+<text xml:space="preserve" x="1214.8" y="774" font-size="10.5" font-weight="bold" fill="#566573" text-anchor="middle">POS</text>
+<polyline points="1190,800 1198,800" fill="none" stroke="#566573" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1198" y="791" width="40.8" height="18" rx="3" fill="#fff" stroke="#566573" stroke-width="1.5"/>
+<text xml:space="preserve" x="1218.4" y="804" font-size="10.5" font-weight="bold" fill="#566573" text-anchor="middle">TEMP</text>
+<polyline points="1190,850 1198,850" fill="none" stroke="#2471a3" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1198" y="841" width="76.8" height="18" rx="3" fill="#fff" stroke="#2471a3" stroke-width="1.5"/>
+<text xml:space="preserve" x="1236.4" y="854" font-size="10.5" font-weight="bold" fill="#2471a3" text-anchor="middle">DUT_RELAY</text>
+<rect x="1380" y="440" width="190" height="150" rx="6" fill="#fdfefe" stroke="#34495e" stroke-width="1.6"/>
+<text xml:space="preserve" x="1475.0" y="457" font-size="12.5" font-weight="bold" fill="#1b2631" text-anchor="middle">microSD MODULE</text>
+<text xml:space="preserve" x="1475.0" y="471" font-size="10" font-weight="normal" fill="#566573" text-anchor="middle" font-style="italic">FAT32</text>
+<circle cx="1380" cy="492" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1388" y="496" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">CS</text>
+<circle cx="1380" cy="515" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1388" y="519" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">SCK</text>
+<circle cx="1380" cy="538" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1388" y="542" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">MOSI</text>
+<circle cx="1380" cy="561" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1388" y="565" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">MISO</text>
+<circle cx="1440" cy="590" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1440" y="584" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">VCC*</text>
+<circle cx="1510" cy="590" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1510" y="584" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">GND</text>
+<polyline points="1380,492 1372,492" fill="none" stroke="#7d3c98" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1324.0" y="483" width="48.0" height="18" rx="3" fill="#fff" stroke="#7d3c98" stroke-width="1.5"/>
+<text xml:space="preserve" x="1348.0" y="496" font-size="10.5" font-weight="bold" fill="#7d3c98" text-anchor="middle">SD_CS</text>
+<polyline points="1380,515 1372,515" fill="none" stroke="#7d3c98" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1309.6" y="506" width="62.4" height="18" rx="3" fill="#fff" stroke="#7d3c98" stroke-width="1.5"/>
+<text xml:space="preserve" x="1340.8" y="519" font-size="10.5" font-weight="bold" fill="#7d3c98" text-anchor="middle">SPI_SCK</text>
+<polyline points="1380,538 1372,538" fill="none" stroke="#7d3c98" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1302.4" y="529" width="69.6" height="18" rx="3" fill="#fff" stroke="#7d3c98" stroke-width="1.5"/>
+<text xml:space="preserve" x="1337.2" y="542" font-size="10.5" font-weight="bold" fill="#7d3c98" text-anchor="middle">SPI_MOSI</text>
+<polyline points="1380,561 1372,561" fill="none" stroke="#7d3c98" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1302.4" y="552" width="69.6" height="18" rx="3" fill="#fff" stroke="#7d3c98" stroke-width="1.5"/>
+<text xml:space="preserve" x="1337.2" y="565" font-size="10.5" font-weight="bold" fill="#7d3c98" text-anchor="middle">SPI_MISO</text>
+<polyline points="1440,590 1440,598" fill="none" stroke="#e67e22" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1426.8" y="598" width="26.4" height="18" rx="3" fill="#fff" stroke="#e67e22" stroke-width="1.5"/>
+<text xml:space="preserve" x="1440" y="611" font-size="10.5" font-weight="bold" fill="#e67e22" text-anchor="middle">5V</text>
+<polyline points="1510,590 1510,598" fill="none" stroke="#2c3e50" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1493.2" y="598" width="33.6" height="18" rx="3" fill="#fff" stroke="#2c3e50" stroke-width="1.5"/>
+<text xml:space="preserve" x="1510" y="611" font-size="10.5" font-weight="bold" fill="#2c3e50" text-anchor="middle">GND</text>
+<rect x="1380" y="640" width="190" height="180" rx="6" fill="#fdfefe" stroke="#34495e" stroke-width="1.6"/>
+<text xml:space="preserve" x="1475.0" y="657" font-size="12.5" font-weight="bold" fill="#1b2631" text-anchor="middle">MCP2515 CAN MODULE</text>
+<text xml:space="preserve" x="1475.0" y="671" font-size="10" font-weight="normal" fill="#566573" text-anchor="middle" font-style="italic">check the crystal: 8 or 16 MHz</text>
+<circle cx="1380" cy="692" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1388" y="696" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">CS</text>
+<circle cx="1380" cy="715" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1388" y="719" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">SCK</text>
+<circle cx="1380" cy="738" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1388" y="742" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">SI</text>
+<circle cx="1380" cy="761" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1388" y="765" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">SO</text>
+<circle cx="1570" cy="700" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1562" y="704" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">CAN_H</text>
+<circle cx="1570" cy="725" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1562" y="729" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">CAN_L</text>
+<circle cx="1440" cy="820" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1440" y="814" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">VCC*</text>
+<circle cx="1510" cy="820" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1510" y="814" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">GND</text>
+<polyline points="1380,692 1372,692" fill="none" stroke="#7d3c98" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1316.8" y="683" width="55.2" height="18" rx="3" fill="#fff" stroke="#7d3c98" stroke-width="1.5"/>
+<text xml:space="preserve" x="1344.4" y="696" font-size="10.5" font-weight="bold" fill="#7d3c98" text-anchor="middle">CAN_CS</text>
+<polyline points="1380,715 1372,715" fill="none" stroke="#7d3c98" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1309.6" y="706" width="62.4" height="18" rx="3" fill="#fff" stroke="#7d3c98" stroke-width="1.5"/>
+<text xml:space="preserve" x="1340.8" y="719" font-size="10.5" font-weight="bold" fill="#7d3c98" text-anchor="middle">SPI_SCK</text>
+<polyline points="1380,738 1372,738" fill="none" stroke="#7d3c98" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1302.4" y="729" width="69.6" height="18" rx="3" fill="#fff" stroke="#7d3c98" stroke-width="1.5"/>
+<text xml:space="preserve" x="1337.2" y="742" font-size="10.5" font-weight="bold" fill="#7d3c98" text-anchor="middle">SPI_MOSI</text>
+<polyline points="1380,761 1372,761" fill="none" stroke="#7d3c98" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1302.4" y="752" width="69.6" height="18" rx="3" fill="#fff" stroke="#7d3c98" stroke-width="1.5"/>
+<text xml:space="preserve" x="1337.2" y="765" font-size="10.5" font-weight="bold" fill="#7d3c98" text-anchor="middle">SPI_MISO</text>
+<polyline points="1570,700 1578,700" fill="none" stroke="#b7950b" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1578" y="691" width="40.8" height="18" rx="3" fill="#fff" stroke="#b7950b" stroke-width="1.5"/>
+<text xml:space="preserve" x="1598.4" y="704" font-size="10.5" font-weight="bold" fill="#b7950b" text-anchor="middle">CANH</text>
+<polyline points="1570,725 1578,725" fill="none" stroke="#b7950b" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1578" y="716" width="40.8" height="18" rx="3" fill="#fff" stroke="#b7950b" stroke-width="1.5"/>
+<text xml:space="preserve" x="1598.4" y="729" font-size="10.5" font-weight="bold" fill="#b7950b" text-anchor="middle">CANL</text>
+<polyline points="1440,820 1440,828" fill="none" stroke="#e67e22" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1426.8" y="828" width="26.4" height="18" rx="3" fill="#fff" stroke="#e67e22" stroke-width="1.5"/>
+<text xml:space="preserve" x="1440" y="841" font-size="10.5" font-weight="bold" fill="#e67e22" text-anchor="middle">5V</text>
+<polyline points="1510,820 1510,828" fill="none" stroke="#2c3e50" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1493.2" y="828" width="33.6" height="18" rx="3" fill="#fff" stroke="#2c3e50" stroke-width="1.5"/>
+<text xml:space="preserve" x="1510" y="841" font-size="10.5" font-weight="bold" fill="#2c3e50" text-anchor="middle">GND</text>
+<text xml:space="preserve" x="1475" y="856" font-size="9.5" font-weight="normal" fill="#b7950b" text-anchor="middle" font-style="italic">120 ohm termination at each end</text>
+<rect x="1380" y="890" width="190" height="140" rx="6" fill="#fdfefe" stroke="#34495e" stroke-width="1.6"/>
+<text xml:space="preserve" x="1475.0" y="907" font-size="12.5" font-weight="bold" fill="#1b2631" text-anchor="middle">L9637D K-LINE</text>
+<text xml:space="preserve" x="1475.0" y="921" font-size="10" font-weight="normal" fill="#566573" text-anchor="middle" font-style="italic">ISO 9141 / 14230</text>
+<circle cx="1380" cy="942" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1388" y="946" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">RX out</text>
+<circle cx="1380" cy="967" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1388" y="971" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">TX in</text>
+<circle cx="1380" cy="1002" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1388" y="1006" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">VBAT</text>
+<circle cx="1570" cy="942" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1562" y="946" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">K-LINE</text>
+<circle cx="1440" cy="1030" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1440" y="1024" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">VCC*</text>
+<circle cx="1510" cy="1030" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1510" y="1024" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">GND</text>
+<polyline points="1380,942 1372,942" fill="none" stroke="#6c3483" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1331.2" y="933" width="40.8" height="18" rx="3" fill="#fff" stroke="#6c3483" stroke-width="1.5"/>
+<text xml:space="preserve" x="1351.6" y="946" font-size="10.5" font-weight="bold" fill="#6c3483" text-anchor="middle">K_RX</text>
+<polyline points="1380,967 1372,967" fill="none" stroke="#6c3483" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1331.2" y="958" width="40.8" height="18" rx="3" fill="#fff" stroke="#6c3483" stroke-width="1.5"/>
+<text xml:space="preserve" x="1351.6" y="971" font-size="10.5" font-weight="bold" fill="#6c3483" text-anchor="middle">K_TX</text>
+<polyline points="1380,1002 1372,1002" fill="none" stroke="#c0392b" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1338.4" y="993" width="33.6" height="18" rx="3" fill="#fff" stroke="#c0392b" stroke-width="1.5"/>
+<text xml:space="preserve" x="1355.2" y="1006" font-size="10.5" font-weight="bold" fill="#c0392b" text-anchor="middle">12V</text>
+<polyline points="1570,942 1578,942" fill="none" stroke="#6c3483" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1578" y="933" width="26" height="18" rx="3" fill="#fff" stroke="#6c3483" stroke-width="1.5"/>
+<text xml:space="preserve" x="1591.0" y="946" font-size="10.5" font-weight="bold" fill="#6c3483" text-anchor="middle">K</text>
+<polyline points="1440,1030 1440,1038" fill="none" stroke="#e67e22" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1426.8" y="1038" width="26.4" height="18" rx="3" fill="#fff" stroke="#e67e22" stroke-width="1.5"/>
+<text xml:space="preserve" x="1440" y="1051" font-size="10.5" font-weight="bold" fill="#e67e22" text-anchor="middle">5V</text>
+<polyline points="1510,1030 1510,1038" fill="none" stroke="#2c3e50" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1493.2" y="1038" width="33.6" height="18" rx="3" fill="#fff" stroke="#2c3e50" stroke-width="1.5"/>
+<text xml:space="preserve" x="1510" y="1051" font-size="10.5" font-weight="bold" fill="#2c3e50" text-anchor="middle">GND</text>
+<rect x="1380" y="1085" width="190" height="70" rx="6" fill="#fdfefe" stroke="#34495e" stroke-width="1.6"/>
+<text xml:space="preserve" x="1475.0" y="1102" font-size="12.5" font-weight="bold" fill="#1b2631" text-anchor="middle">POSITION DIVIDER</text>
+<text xml:space="preserve" x="1475.0" y="1116" font-size="10" font-weight="normal" fill="#566573" text-anchor="middle" font-style="italic">keep &lt;= 3.3 V at GPIO36</text>
+<circle cx="1380" cy="1137" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1388" y="1141" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">OUT</text>
+<circle cx="1570" cy="1137" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1562" y="1141" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">IN</text>
+<polyline points="1380,1137 1372,1137" fill="none" stroke="#566573" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1338.4" y="1128" width="33.6" height="18" rx="3" fill="#fff" stroke="#566573" stroke-width="1.5"/>
+<text xml:space="preserve" x="1355.2" y="1141" font-size="10.5" font-weight="bold" fill="#566573" text-anchor="middle">POS</text>
+<polyline points="1570,1137 1578,1137" fill="none" stroke="#566573" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1578" y="1128" width="62.4" height="18" rx="3" fill="#fff" stroke="#566573" stroke-width="1.5"/>
+<text xml:space="preserve" x="1609.2" y="1141" font-size="10.5" font-weight="bold" fill="#566573" text-anchor="middle">POS_RAW</text>
+<rect x="1380" y="1180" width="190" height="85" rx="6" fill="#fdfefe" stroke="#34495e" stroke-width="1.6"/>
+<text xml:space="preserve" x="1475.0" y="1197" font-size="12.5" font-weight="bold" fill="#1b2631" text-anchor="middle">TEMP SENSOR (optional)</text>
+<text xml:space="preserve" x="1475.0" y="1211" font-size="10" font-weight="normal" fill="#566573" text-anchor="middle" font-style="italic">V2 reports raw ADC volts, not C</text>
+<circle cx="1380" cy="1232" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1388" y="1236" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="start">OUT</text>
+<circle cx="1570" cy="1232" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="1562" y="1236" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">GND</text>
+<polyline points="1380,1232 1372,1232" fill="none" stroke="#566573" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1331.2" y="1223" width="40.8" height="18" rx="3" fill="#fff" stroke="#566573" stroke-width="1.5"/>
+<text xml:space="preserve" x="1351.6" y="1236" font-size="10.5" font-weight="bold" fill="#566573" text-anchor="middle">TEMP</text>
+<polyline points="1570,1232 1578,1232" fill="none" stroke="#2c3e50" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1578" y="1223" width="33.6" height="18" rx="3" fill="#fff" stroke="#2c3e50" stroke-width="1.5"/>
+<text xml:space="preserve" x="1594.8" y="1236" font-size="10.5" font-weight="bold" fill="#2c3e50" text-anchor="middle">GND</text>
+<rect x="60" y="960" width="200" height="100" rx="6" fill="#fdfefe" stroke="#34495e" stroke-width="1.6"/>
+<text xml:space="preserve" x="160.0" y="999" font-size="12.5" font-weight="bold" fill="#1b2631" text-anchor="middle">12 V -&gt; 5 V BUCK</text>
+<text xml:space="preserve" x="160.0" y="1013" font-size="10" font-weight="normal" fill="#566573" text-anchor="middle" font-style="italic">relay coils, Nano, ESP32</text>
+<circle cx="260" cy="1026" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="252" y="1030" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">5V OUT</text>
+<circle cx="260" cy="1044" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="252" y="1048" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="end">GND</text>
+<circle cx="100" cy="960" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="100" y="975" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">IN+</text>
+<circle cx="140" cy="960" r="3" fill="#34495e"/>
+<text xml:space="preserve" x="140" y="975" font-size="11" font-weight="normal" fill="#1b2631" text-anchor="middle">IN-</text>
+<polyline points="100,960 100,952" fill="none" stroke="#c0392b" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="83.2" y="934" width="33.6" height="18" rx="3" fill="#fff" stroke="#c0392b" stroke-width="1.5"/>
+<text xml:space="preserve" x="100" y="947" font-size="10.5" font-weight="bold" fill="#c0392b" text-anchor="middle">12V</text>
+<polyline points="140,960 140,952" fill="none" stroke="#2c3e50" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="123.2" y="934" width="33.6" height="18" rx="3" fill="#fff" stroke="#2c3e50" stroke-width="1.5"/>
+<text xml:space="preserve" x="140" y="947" font-size="10.5" font-weight="bold" fill="#2c3e50" text-anchor="middle">GND</text>
+<polyline points="260,1026 268,1026" fill="none" stroke="#e67e22" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="268" y="1017" width="26.4" height="18" rx="3" fill="#fff" stroke="#e67e22" stroke-width="1.5"/>
+<text xml:space="preserve" x="281.2" y="1030" font-size="10.5" font-weight="bold" fill="#e67e22" text-anchor="middle">5V</text>
+<polyline points="260,1044 268,1044" fill="none" stroke="#2c3e50" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="268" y="1035" width="33.6" height="18" rx="3" fill="#fff" stroke="#2c3e50" stroke-width="1.5"/>
+<text xml:space="preserve" x="284.8" y="1048" font-size="10.5" font-weight="bold" fill="#2c3e50" text-anchor="middle">GND</text>
+<rect x="40" y="1100" width="330" height="150" rx="6" fill="#f8f9f9" stroke="#aab7b8" stroke-width="1.6"/>
+<text xml:space="preserve" x="50" y="1118" font-size="11.5" font-weight="bold" fill="#1b2631" text-anchor="start">LEGEND</text>
+<polyline points="52,1136 74,1136" fill="none" stroke="#c0392b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text xml:space="preserve" x="80" y="1140" font-size="10" font-weight="normal" fill="#1b2631" text-anchor="start">12 V power (fused)</text>
+<polyline points="212,1136 234,1136" fill="none" stroke="#e67e22" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text xml:space="preserve" x="240" y="1140" font-size="10" font-weight="normal" fill="#1b2631" text-anchor="start">5 V rail</text>
+<polyline points="52,1152 74,1152" fill="none" stroke="#d35400" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text xml:space="preserve" x="80" y="1156" font-size="10" font-weight="normal" fill="#1b2631" text-anchor="start">3.3 V rail</text>
+<polyline points="212,1152 234,1152" fill="none" stroke="#2c3e50" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text xml:space="preserve" x="240" y="1156" font-size="10" font-weight="normal" fill="#1b2631" text-anchor="start">Ground (all common)</text>
+<polyline points="52,1168 74,1168" fill="none" stroke="#2471a3" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text xml:space="preserve" x="80" y="1172" font-size="10" font-weight="normal" fill="#1b2631" text-anchor="start">Digital signal / relay drive</text>
+<polyline points="212,1168 234,1168" fill="none" stroke="#1e8449" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text xml:space="preserve" x="240" y="1172" font-size="10" font-weight="normal" fill="#1b2631" text-anchor="start">Nano - ESP32 UART</text>
+<polyline points="52,1184 74,1184" fill="none" stroke="#7d3c98" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text xml:space="preserve" x="80" y="1188" font-size="10" font-weight="normal" fill="#1b2631" text-anchor="start">SPI (SD + MCP2515 share)</text>
+<polyline points="212,1184 234,1184" fill="none" stroke="#117a65" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text xml:space="preserve" x="240" y="1188" font-size="10" font-weight="normal" fill="#1b2631" text-anchor="start">I2C</text>
+<polyline points="52,1200 74,1200" fill="none" stroke="#b7950b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text xml:space="preserve" x="80" y="1204" font-size="10" font-weight="normal" fill="#1b2631" text-anchor="start">CAN bus</text>
+<polyline points="212,1200 234,1200" fill="none" stroke="#6c3483" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text xml:space="preserve" x="240" y="1204" font-size="10" font-weight="normal" fill="#1b2631" text-anchor="start">K-Line</text>
+<polyline points="52,1216 74,1216" fill="none" stroke="#566573" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text xml:space="preserve" x="80" y="1220" font-size="10" font-weight="normal" fill="#1b2631" text-anchor="start">Analog sense</text>
+<text xml:space="preserve" x="52" y="1242" font-size="9.5" font-weight="normal" fill="#566573" text-anchor="start" font-style="italic">Same-named flags are connected; wire crossings are not.</text>
+<text xml:space="preserve" x="400" y="1020" font-size="10.5" font-weight="bold" fill="#1b2631" text-anchor="start">MUST-CHECK BEFORE POWER-UP</text>
+<text xml:space="preserve" x="400" y="1036" font-size="10.5" font-weight="normal" fill="#1b2631" text-anchor="start">1  I2C LEVELS: ESP32 is 3.3 V, the Nano is 5 V. Use the level shifter; never join SDA/SCL directly.</text>
+<text xml:space="preserve" x="400" y="1052" font-size="10.5" font-weight="normal" fill="#1b2631" text-anchor="start">    The Nano V2 sketch turns its internal pull-ups off; the shifter board supplies pull-ups on both sides.</text>
+<text xml:space="preserve" x="400" y="1068" font-size="10.5" font-weight="normal" fill="#1b2631" text-anchor="start">2  The DUT relay on GPIO27 is ACTIVE-HIGH (HIGH = on). Do NOT use an active-LOW relay module there:</text>
+<text xml:space="preserve" x="400" y="1084" font-size="10.5" font-weight="normal" fill="#1b2631" text-anchor="start">    it would be energised whenever the pin is LOW, including at boot and when "off".</text>
+<text xml:space="preserve" x="400" y="1100" font-size="10.5" font-weight="normal" fill="#1b2631" text-anchor="start">3  Nano relay modules are active-LOW; MOSFET gates are active-HIGH. All outputs are off at Nano boot.</text>
+<text xml:space="preserve" x="400" y="1116" font-size="10.5" font-weight="normal" fill="#1b2631" text-anchor="start">4  E-STOP is a normally-CLOSED contact D3-GND (pressed OR broken wire = e-stop); jumper D3 to GND</text>
+<text xml:space="preserve" x="400" y="1132" font-size="10.5" font-weight="normal" fill="#1b2631" text-anchor="start">    if none is fitted, or the Nano stays faulted and refuses every ON command.</text>
+<text xml:space="preserve" x="400" y="1148" font-size="10.5" font-weight="normal" fill="#1b2631" text-anchor="start">5  Supply divider 100k/27k: 15 V gives 3.19 V at GPIO34. Meter it before connecting. Never 12 V to a GPIO.</text>
+<text xml:space="preserve" x="400" y="1164" font-size="10.5" font-weight="normal" fill="#1b2631" text-anchor="start">6  * MCP2515 / L9637D / some SD boards are 5 V logic: their outputs can put 5 V on ESP32 pins.</text>
+<text xml:space="preserve" x="400" y="1180" font-size="10.5" font-weight="normal" fill="#1b2631" text-anchor="start">    Use 3.3 V-logic boards or level-shift those lines.</text>
+<text xml:space="preserve" x="400" y="1196" font-size="10.5" font-weight="normal" fill="#1b2631" text-anchor="start">7  INA219 measures DUT voltage AND current, and the sketch refuses PRETEST without it (about 3.2 A max).</text>
+<text xml:space="preserve" x="400" y="1212" font-size="10.5" font-weight="normal" fill="#1b2631" text-anchor="start">8  Pair "TIFF_TESTER_V2" in Android Bluetooth settings (no PIN) before connecting from the app.</text>
+</svg>
