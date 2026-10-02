@@ -82,6 +82,8 @@ Do all of this with **everything unplugged**.
 
 ## Part 2 - Flash and first boot
 
+Full build/flash steps and board settings: [FLASHING_GUIDE.md](FLASHING_GUIDE.md). The list below is the short version.
+
 **Nano**
 - [ ] Disconnect Nano D0/D1 from the ESP32 (they share the programming UART)
 - [ ] Board: Arduino Nano, processor ATmega328P (**Old Bootloader**), as CI builds it
