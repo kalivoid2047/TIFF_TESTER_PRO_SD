@@ -255,9 +255,12 @@ class _ScanScreenState extends State<ScanScreen> {
           ),
           Padding(
             padding: const EdgeInsets.all(16),
-            child: ElevatedButton(
-              onPressed: _scanning ? _stopScan : _startScan,
-              child: Text(_scanning ? 'STOP SCAN' : 'SCAN FOR DEVICES'),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _scanning ? _stopScan : _startScan,
+                child: Text(_scanning ? 'STOP SCAN' : 'SCAN FOR DEVICES'),
+              ),
             ),
           ),
         ],
