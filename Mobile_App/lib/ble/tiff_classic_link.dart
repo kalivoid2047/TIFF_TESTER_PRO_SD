@@ -5,6 +5,14 @@ import 'package:flutter_bluetooth_classic_serial/flutter_bluetooth_classic.dart'
 
 import '../models/nano_status.dart';
 
+/// Connect failure whose toString() is just the human-readable message.
+class ClassicConnectException implements Exception {
+  final String message;
+  ClassicConnectException(this.message);
+  @override
+  String toString() => message;
+}
+
 /// Bluetooth Classic (SPP/RFCOMM) link for the V2.x "Bluetooth-only"
 /// firmware (`ESP32_Firmware_V2/TIFF_TESTER_PRO_V2_ESP32.ino`, advertised as
 /// `TIFF_TESTER_V2`; see ESP32_Firmware_V2/README.md).
@@ -43,20 +51,51 @@ class TiffClassicLink {
   Future<List<bt.BluetoothDevice>> pairedDevices() => _bt.getPairedDevices();
 
   Future<void> connect(String address, String name) async {
-    final ok = await _bt.connect(address);
-    if (!ok) {
-      throw StateError('Could not open a Bluetooth serial link to $name. '
-          'Make sure it is powered and paired.');
+    // The plugin's connect() returns true as soon as its socket thread starts;
+    // whether the board actually answered arrives later on
+    // onConnectionChanged (CONNECTED, or ERROR: ... e.g. page timeout when the
+    // board is off or out of range). Wait for that, otherwise the app reports
+    // "connected" with no link and then "drops" a few seconds later.
+    final outcome = Completer<bt.BluetoothConnectionState>();
+    _connSub = _bt.onConnectionChanged.listen((c) {
+      if (c.deviceAddress.toUpperCase() != address.toUpperCase()) return;
+      if (!outcome.isCompleted) {
+        outcome.complete(c);
+      } else if (!c.isConnected && connected) {
+        _handleLost();
+      }
+    });
+
+    try {
+      final started = await _bt.connect(address);
+      if (!started) {
+        throw ClassicConnectException(
+            'Could not open a Bluetooth serial link to $name.');
+      }
+      final state = await outcome.future.timeout(
+        const Duration(seconds: 20),
+        onTimeout: () => throw ClassicConnectException('$name did not respond.'),
+      );
+      if (!state.isConnected) {
+        throw ClassicConnectException(
+            '$name did not accept the connection (${state.status}).');
+      }
+    } catch (e) {
+      _connSub?.cancel();
+      _connSub = null;
+      try {
+        await _bt.disconnect();
+      } catch (_) {}
+      throw ClassicConnectException('$e Make sure the board is powered, in '
+          'range and not connected to another device.');
     }
+
     deviceAddress = address;
     deviceName = name;
     connected = true;
     _rxBuffer = '';
 
     _dataSub = _bt.onDataReceived.listen((d) => _onData(d.asString()));
-    _connSub = _bt.onConnectionChanged.listen((c) {
-      if (!c.isConnected && connected) _handleLost();
-    });
 
     _pollTimer =
         Timer.periodic(const Duration(milliseconds: 500), (_) => _poll());
@@ -64,7 +103,10 @@ class TiffClassicLink {
   }
 
   void _poll() {
-    if (connected) _bt.sendString('STATUS\n');
+    if (!connected) return;
+    // A failed send (link just dropped) is reported via onConnectionChanged;
+    // don't let it surface as an unhandled async error every tick.
+    _bt.sendString('STATUS\n').catchError((_) => false);
   }
 
   Future<void> sendLine(String line) async {
