@@ -24,7 +24,7 @@ hardware yet**.
 | Live graph, CSV copy, PDF report | Works |
 | CAN / UDS / K-Line / KWP diagnostics (read-only) | Implemented, **unvalidated against a real ECU** |
 | **Injector, ignition-coil and all-injectors tests** | **Do not drive anything.** There is no injector/coil driver hardware yet, so these screens always report `NOT_IMPLEMENTED`. |
-| MOSFET outputs | Shown disabled - no driver hardware yet |
+| MOSFET outputs | MOSFET 1-2 ON/OFF switches on the V2 (Bluetooth Classic) board |
 
 There are two firmware lines the app can talk to. **The main system (BLE) has every
 feature above. The V2 line (Bluetooth Classic) has fewer** - see
@@ -168,7 +168,7 @@ closed.
   - *Aux relay auto-off* - Off, or 10 / 30 / 60 / 300 s, so a forgotten auxiliary
     relay switches itself off. Applies to relays switched on after you set it.
   - Both settings are saved on the tester.
-- **MOSFET Outputs** - shown disabled; the driver hardware does not exist yet.
+- **MOSFET Outputs** - MOSFET 1 and MOSFET 2 ON/OFF switches. They work on the V2 (Bluetooth Classic) board only and are disabled until you are connected to it. The Nano refuses ON while faulted or e-stopped, and **ALL OUTPUTS OFF** turns them off.
 - **ALL OUTPUTS OFF**.
 
 If a switch does nothing, check the Live Data **SYSTEM** line - an e-stop or fault

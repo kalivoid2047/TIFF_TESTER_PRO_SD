@@ -202,6 +202,9 @@ class TiffClassicLink {
         kv['R4'] == 'ON',
       ],
       relaysReported: kv.containsKey('R1'),
+      // V2.2.1+ reports M1/M2 (MOSFET outputs) read back from the Nano.
+      mosfets: [kv['M1'] == 'ON', kv['M2'] == 'ON'],
+      mosfetsReported: kv.containsKey('M1'),
     );
   }
 

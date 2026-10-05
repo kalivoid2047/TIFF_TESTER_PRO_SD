@@ -131,6 +131,9 @@ class AppState extends ChangeNotifier {
         for (var i = 0; i < _classicRelays.length; i++) {
           _classicRelays[i] = false;
         }
+        for (var i = 0; i < _classicMosfets.length; i++) {
+          _classicMosfets[i] = false;
+        }
       }
       notifyListeners();
     });
@@ -150,6 +153,9 @@ class AppState extends ChangeNotifier {
         nanoStatus = const NanoStatus.unknown();
         for (var i = 0; i < _classicRelays.length; i++) {
           _classicRelays[i] = false;
+        }
+        for (var i = 0; i < _classicMosfets.length; i++) {
+          _classicMosfets[i] = false;
         }
         activeModuleId = null;
         usingDefaultPin = false;
@@ -239,6 +245,20 @@ class AppState extends ChangeNotifier {
   /// a reading (older V2 firmware only).
   bool get relayStatesAreCommanded => isClassic && !nanoStatus.relaysReported;
 
+  /// Last MOSFET state *commanded* over the V2 link; only shown when the
+  /// firmware doesn't report MOSFET state (older V2 firmware).
+  final List<bool> _classicMosfets = [false, false];
+
+  /// MOSFET 1-2 states: read back from the Nano where the firmware reports
+  /// them (V2.2.1+), otherwise the last command sent.
+  List<bool> get mosfetStates => nanoStatus.mosfetsReported
+      ? nanoStatus.mosfets
+      : List.unmodifiable(_classicMosfets);
+
+  /// True when the MOSFET states shown are the last command sent rather than
+  /// a reading.
+  bool get mosfetStatesAreCommanded => !nanoStatus.mosfetsReported;
+
   Future<void> powerOn() => ble.sendCommand('POWER_ON');
   Future<void> powerOff() => ble.sendCommand('POWER_OFF');
   Future<void> resetFault() => ble.sendCommand('RESET_FAULT');
@@ -282,6 +302,18 @@ class AppState extends ChangeNotifier {
     await ble.sendCommand('RELAY:$n,${on ? 1 : 0}');
     if (isClassic && n >= 1 && n <= 4) {
       _classicRelays[n - 1] = on;
+      notifyListeners();
+    }
+  }
+
+  /// Switches MOSFET [n] (1-2) on/off. V2 (Bluetooth Classic) firmware only.
+  /// The Nano refuses an ON while faulted / e-stopped / heartbeat-stale, and
+  /// the firmware confirms by reading the state back, so a refusal surfaces
+  /// as an error message rather than a silent no-op.
+  Future<void> setMosfet(int n, bool on) async {
+    await ble.sendCommand('MOSFET:$n,${on ? 1 : 0}');
+    if (isClassic && n >= 1 && n <= 2) {
+      _classicMosfets[n - 1] = on;
       notifyListeners();
     }
   }
@@ -367,6 +399,9 @@ class AppState extends ChangeNotifier {
   void _clearClassicRelays() {
     for (var i = 0; i < _classicRelays.length; i++) {
       _classicRelays[i] = false;
+    }
+    for (var i = 0; i < _classicMosfets.length; i++) {
+      _classicMosfets[i] = false;
     }
     notifyListeners();
   }

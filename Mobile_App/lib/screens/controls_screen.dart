@@ -12,11 +12,9 @@ import '../widgets/live_data_card.dart';
 /// §17 "Control Screen" / §18 "Safety Control" / §37 "Emergency ALL
 /// OUTPUTS OFF"). Distinguishes the one relay that physically exists — the
 /// critical DUT relay, driven by the Nano independently of the ESP32 — from
-/// the auxiliary relay/MOSFET outputs the vision brief describes, which
-/// need Phase 1 driver hardware that doesn't exist yet
-/// (Documentation/ROADMAP.md). Per brief §17: "Use clear labels rather than
-/// confusing relay numbers" and never conflate the DUT relay with an
-/// auxiliary one.
+/// the auxiliary relay outputs and (V2 board) MOSFET 1-2 outputs. Per brief
+/// §17: "Use clear labels rather than confusing relay numbers" and never
+/// conflate the DUT relay with an auxiliary one.
 class ControlsScreen extends StatelessWidget {
   const ControlsScreen({super.key});
 
@@ -219,7 +217,33 @@ class ControlsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _PendingHardwareRow(labels: const ['MOSFET 1', 'MOSFET 2']),
+                Text(
+                  !connected
+                      ? 'Connect to the V2 (Bluetooth Classic) board to '
+                          'switch MOSFETs 1-2.'
+                      : !app.isClassic
+                          ? 'MOSFET outputs are on the V2 (Bluetooth '
+                              'Classic) board only.'
+                          : (app.mosfetStatesAreCommanded
+                              ? 'V2 board: MOSFETs 1-2 are driven by the Nano. '
+                                  'This older V2 firmware reports no MOSFET '
+                                  'state, so these switches show the last '
+                                  'command sent, not a measurement.'
+                              : 'V2 board: MOSFETs 1-2 are driven by the Nano '
+                                  'and their state is read back from it. The '
+                                  'Nano refuses ON while faulted or e-stopped; '
+                                  'ALL OUTPUTS OFF turns them off.'),
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 12),
+                ),
+                const SizedBox(height: 8),
+                for (var n = 1; n <= 2; n++)
+                  _MosfetRow(
+                    name: 'MOSFET $n',
+                    on: app.mosfetStates[n - 1],
+                    enabled: connected && app.isClassic,
+                    onSet: (on) => _setMosfet(context, app, n, on),
+                  ),
               ],
             ),
           ),
@@ -254,6 +278,11 @@ class ControlsScreen extends StatelessWidget {
   Future<void> _setRelay(
       BuildContext context, AppState app, int n, bool on) async {
     await _guard(context, () => app.setRelay(n, on));
+  }
+
+  Future<void> _setMosfet(
+      BuildContext context, AppState app, int n, bool on) async {
+    await _guard(context, () => app.setMosfet(n, on));
   }
 
   Future<void> _confirmPolarity(
@@ -469,36 +498,38 @@ class _RelayRowState extends State<_RelayRow> {
   }
 }
 
-/// A row of buttons for outputs that need Phase 1 driver hardware
-/// (Documentation/ROADMAP.md) which doesn't exist on this bench yet — shown
-/// disabled rather than wired to a command the firmware would silently
-/// drop, matching this codebase's "don't fake it" convention (compare the
-/// channel-test screens' honest `NOT_IMPLEMENTED` results).
-class _PendingHardwareRow extends StatelessWidget {
-  final List<String> labels;
-  const _PendingHardwareRow({required this.labels});
+/// One MOSFET output: label, live state and an ON/OFF switch.
+class _MosfetRow extends StatelessWidget {
+  final String name;
+  final bool on;
+  final bool enabled;
+  final ValueChanged<bool> onSet;
+
+  const _MosfetRow({
+    required this.name,
+    required this.on,
+    required this.enabled,
+    required this.onSet,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        for (final label in labels) ...[
-          Expanded(
-            child: Opacity(
-              opacity: 0.4,
-              child: OutlinedButton(
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                        'Needs driver hardware not yet installed (Roadmap Phase 1)'),
-                  ),
-                ),
-                child: Text(label),
-              ),
-            ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(name.toUpperCase(),
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(on ? 'ON' : 'OFF',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: on ? AppColors.success : AppColors.textSecondary)),
+            ],
           ),
-          if (label != labels.last) const SizedBox(width: 8),
-        ],
+        ),
+        Switch(value: on, onChanged: enabled ? onSet : null),
       ],
     );
   }

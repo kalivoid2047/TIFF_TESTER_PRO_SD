@@ -17,6 +17,13 @@ class NanoStatus {
   /// firmware doesn't, so they read as off there.
   final List<bool> relays;
 
+  /// MOSFET output states, index 0 = MOSFET 1, index 1 = MOSFET 2. Only the
+  /// V2 Bluetooth Classic firmware (V2.2.1+) has and reports them.
+  final List<bool> mosfets;
+
+  /// True when [mosfets] came from the firmware (read back from the Nano).
+  final bool mosfetsReported;
+
   /// Nano temperature input, degrees C.
   final double tempC;
 
@@ -64,6 +71,8 @@ class NanoStatus {
     required this.currentA,
     required this.faultText,
     this.relays = const [false, false, false, false],
+    this.mosfets = const [false, false],
+    this.mosfetsReported = false,
     this.tempC = 0,
     this.positionPct = 0,
     this.canReady = false,
@@ -90,6 +99,8 @@ class NanoStatus {
         currentA = 0,
         faultText = '',
         relays = const [false, false, false, false],
+        mosfets = const [false, false],
+        mosfetsReported = false,
         tempC = 0,
         positionPct = 0,
         canReady = false,

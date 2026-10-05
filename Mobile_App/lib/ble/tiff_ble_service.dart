@@ -201,6 +201,13 @@ class TiffBleService {
         final on = parts.length > 1 && parts[1].trim() == '1';
         if (n < 1 || n > 4) throw StateError('Relay must be 1-4.');
         return classic.sendLine('RELAY${n}_${on ? 'ON' : 'OFF'}');
+      case 'MOSFET':
+        // "MOSFET:<n>,<0|1>" -> V2's MOSFET<n>_ON/OFF (Nano MOSFETs 1-2).
+        final parts = arg.split(',');
+        final n = int.tryParse(parts.first) ?? 0;
+        final on = parts.length > 1 && parts[1].trim() == '1';
+        if (n < 1 || n > 2) throw StateError('MOSFET must be 1-2.');
+        return classic.sendLine('MOSFET${n}_${on ? 'ON' : 'OFF'}');
       case 'SELECT_MODULE':
         await classic.sendLine('SELECT_MODULE|$arg');
         // V2 refuses POWER_ON/pretest until the module is validated.
