@@ -17,6 +17,7 @@
     <application
         android:label="tiff_tester_pro"
         android:name="${applicationName}"
+        android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
