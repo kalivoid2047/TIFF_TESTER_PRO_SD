@@ -37,15 +37,18 @@ class _ScanScreenState extends State<ScanScreen> {
 
   Future<void> _loadClassic() async {
     try {
-      final paired = await context.read<AppState>().ble.classic.pairedDevices();
-      if (!mounted) return;
-      setState(() {
-        _classic = [
-          for (final d in paired)
-            if (d.name.toUpperCase().contains('TIFF'))
-              (name: d.name, address: d.address)
-        ];
-      });
+      final classic = context.read<AppState>().ble.classic;
+      void add(String name, String address) {
+        if (!name.toUpperCase().contains('TIFF')) return;
+        if (_classic.any((c) => c.address == address)) return;
+        if (mounted) setState(() => _classic = [..._classic, (name: name, address: address)]);
+      }
+
+      for (final d in await classic.pairedDevices()) {
+        add(d.name, d.address);
+      }
+      // Also inquire for boards that aren't paired yet.
+      await classic.discover((d) => add(d.name, d.address));
     } catch (e) {
       if (mounted) setState(() => _classicError = e.toString());
     }
@@ -156,7 +159,7 @@ class _ScanScreenState extends State<ScanScreen> {
                 children: [
                   Icon(Icons.bluetooth_searching, color: AppColors.brandRed),
                   SizedBox(width: 12),
-                  Text('Scanning for BLE devices...'),
+                  Text('Scanning for Bluetooth devices...'),
                   SizedBox(width: 12),
                   SizedBox(
                     width: 16,
@@ -172,7 +175,7 @@ class _ScanScreenState extends State<ScanScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('PAIRED (BLUETOOTH CLASSIC)',
+                  const Text('BLUETOOTH CLASSIC (V2 BOARD)',
                       style: TextStyle(
                           color: AppColors.textSecondary, fontSize: 12)),
                   for (final d in _classic)

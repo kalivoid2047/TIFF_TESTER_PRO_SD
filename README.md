@@ -83,6 +83,7 @@ Full project documentation lives in [`Documentation/`](Documentation/):
 - [WIRING_DIAGRAM.md](Documentation/WIRING_DIAGRAM.md) — bench wiring diagrams (main system and V2) with connection tables
 - [FLASHING_GUIDE.md](Documentation/FLASHING_GUIDE.md) — how to build and flash the Nano, ESP32 and app
 - [APP_USER_GUIDE.md](Documentation/APP_USER_GUIDE.md) — how to use the Android app, screen by screen
+- [TROUBLESHOOTING.md](Documentation/TROUBLESHOOTING.md) — fault messages, symptoms and fixes for the tester
 - [PINOUT_AND_WIRING.txt](Documentation/PINOUT_AND_WIRING.txt) — inter-
   controller and sensor wiring
 

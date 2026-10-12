@@ -50,6 +50,21 @@ class TiffClassicLink {
   /// Bluetooth settings first.
   Future<List<bt.BluetoothDevice>> pairedDevices() => _bt.getPairedDevices();
 
+  /// Runs a Bluetooth Classic inquiry and reports each device found, so a
+  /// V2 board that isn't paired yet still shows up. Ends after [duration].
+  Future<void> discover(void Function(bt.BluetoothDevice) onFound,
+      {Duration duration = const Duration(seconds: 12)}) async {
+    final sub = _bt.onDeviceDiscovered.listen(onFound);
+    try {
+      if (await _bt.startDiscovery()) await Future.delayed(duration);
+    } finally {
+      await sub.cancel();
+      try {
+        await _bt.stopDiscovery();
+      } catch (_) {}
+    }
+  }
+
   Future<void> connect(String address, String name) async {
     // The plugin's connect() returns true as soon as its socket thread starts;
     // whether the board actually answered arrives later on
